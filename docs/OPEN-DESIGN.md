@@ -175,7 +175,7 @@ deliberately misresolved toolchain, which is the same live-CLI harness D5 needs.
 
 ## D7 — A compensating control is credited on inspection, never on execution
 
-**Status:** open · **Raised by:** [`lessons/0008`](../lessons/0008-control-present-not-effective.md)
+**Status:** MECHANIZED 2026-07-31 as `L31` (Rule 3a) · **Raised by:** [`lessons/0008`](../lessons/0008-control-present-not-effective.md)
 
 `RULES.md` Rule 3 says to check whether mitigations **exist** before reporting. A control that
 exists, is wired up, is reachable, and is wrong satisfies that test completely — and the
@@ -242,7 +242,7 @@ differs from that commit, and the egress cluster's scans are ignore-agnostic by 
 
 ## Checks that would catch the classes above
 
-`evals/check_repo.py` runs 30 structural checks. Every one was added after a real gap got past
+`evals/check_repo.py` runs 31 structural checks. Every one was added after a real gap got past
 the previous set. Known remaining blind spots, from Kimi's M11:
 
 | Class | Caught? | Note |

@@ -151,6 +151,10 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     # The realistic erosion: someone trims the "sounds paranoid" clause. It is one bullet.
     ("L30", lambda r: strip_lines(r / "engines" / "preflight.md",
                                   "cannot contribute to a ceiling of 100")),
+    # The realistic erosion: someone "simplifies" Rule 3a back to the original wording,
+    # which reads as tidying and silently restores the defect lessons/0008 records.
+    ("L31", lambda r: strip_lines(r / "RULES.md",
+                                  "presence is not its efficacy", "demonstrated efficacy")),
     ("L26", lambda r: edit(r / "proof" / "0001-secret-removed-from-tree-still-live-in-history.md",
                            "severity: HIGH", "severity: SEVERE")),
     ("L28", flip_share_default),

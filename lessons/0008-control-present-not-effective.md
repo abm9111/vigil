@@ -6,8 +6,8 @@ missed_by: author, RULES.md Rule 3
 found_detail: caught while editing the control for an unrelated style issue, not while auditing it
 missed_detail: the control was read closely, quoted in the report, and credited as a mitigation
 class: a control's presence is not its efficacy — reading is not running
-status: open
-check:
+status: mechanized
+check: L31
 ---
 
 # A rate limiter was credited as a compensating control; it had never blocked a single request

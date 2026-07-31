@@ -33,6 +33,41 @@ Before reporting a finding:
 
 False positives destroy trust faster than missed findings.
 
+### Rule 3a: A control's presence is not its efficacy
+
+Step 2 above says *check if mitigations exist*. That is necessary and **not sufficient**, and
+the gap is not academic: a rate limiter that existed, was wired up, was reachable, and was
+credited as a compensating control had never blocked a single request. Five hundred requests,
+five hundred allowed, zero blocked (`lessons/0008`).
+
+Rule 3 was *followed*. A control that exists, is wired up, is reachable and is wrong satisfies
+step 2 completely — so the rule was the defect, not the audit.
+
+**A mitigation may reduce a finding's severity only on demonstrated efficacy.** The ladder,
+strongest first:
+
+| Level | What it means | Reduces severity? |
+|---|---|---|
+| **Executed** | the control was exercised and observed to block the input class | yes |
+| **Tested** | a test in the repo covers this input class against this control and passes | yes |
+| **Traced** | the path was followed end to end **including its empty, first-call and error branches** | yes, one step only |
+| **Present** | it exists in the code and looks correct | **no** |
+
+**Reading is not running.** In the case above, no amount of careful reading would have helped:
+the accumulator was unreachable because the prune branch deleted the counter and returned early
+whenever the window was empty — *the state every caller is in on their first request*. The
+defect lived in an interaction visible only on the second call. So a trace must cover the
+control in its **initial** state, not its steady state; a control examined only mid-flight is
+examined in the one state where it works.
+
+**The fence.** Where efficacy cannot be demonstrated, the finding keeps its undiminished
+severity and is marked `NEEDS_REVIEW`. Never reduce quietly on the strength of a control you
+did not exercise — a severity lowered on an unverified mitigation is indistinguishable in the
+report from one lowered on a verified one, and the reader cannot tell which they are holding.
+
+This is Rule 1 applied to the defensive side of the ledger: evidence before opinion, including
+when the opinion is reassuring. An unexercised control is an impression, not a catch.
+
 ## Rule 4: Deterministic First, AI Second
 
 For each cluster, run deterministic tools BEFORE applying AI reasoning:

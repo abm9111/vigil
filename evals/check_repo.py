@@ -42,6 +42,7 @@ Checks:
       a decline is honoured, the record can be shown in full, there is an off switch)
   L29 the record schema's cluster vocabulary matches RULES.md
   L30 preflight requires a tool to resolve inside the subject's environment
+  L31 Rule 3 requires demonstrated efficacy before a control reduces severity
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -1027,6 +1028,45 @@ def check_tool_resolution(r: Report) -> None:
                           "lessons/0007 is the reason this is enforced")
 
 
+EFFICACY_CLAUSES: list[tuple[str, str]] = [
+    ("presence alone does not reduce severity",
+     r"presence is not its efficacy|demonstrated efficacy"),
+    ("there is an evidence ladder for controls",
+     r"Executed|Traced"),
+    ("a merely-present control is explicitly insufficient",
+     r"necessary and \*\*not sufficient\*\*|\*\*no\*\*"),
+    ("the initial-state trap is named",
+     r"first[- ]call|initial\*?\*? state|empty"),
+    ("undemonstrated efficacy keeps the undiminished severity",
+     r"keeps its undiminished\s*\n?severity|undiminished"),
+]
+
+
+def check_control_efficacy(r: Report) -> None:
+    """L31 — Rule 3 must require efficacy, not presence, before a severity is reduced.
+
+    `lessons/0008`: a rate limiter was credited as a compensating control and a severity
+    lowered for it. It had never blocked a request — the prune branch returned early whenever
+    the window was empty, which is every caller's first request. 500 requests, 500 allowed.
+
+    The uncomfortable part is that **Rule 3 was followed**. It said to check whether mitigations
+    *exist*, and a control that exists, is wired up, is reachable and is wrong satisfies that
+    completely. This is the rare case where the rule itself was the defect, which is exactly
+    why it needs a check: a future edit tidying Rule 3 back toward "check if mitigations exist"
+    would reopen it and read as a simplification.
+    """
+    rules = ROOT / "RULES.md"
+    if not rules.exists():
+        r.fail("L31", "RULES.md is missing")
+        return
+    text = rules.read_text(encoding="utf-8")
+    for guarantee, pattern in EFFICACY_CLAUSES:
+        if not re.search(pattern, text, re.I):
+            r.fail("L31", f"RULES.md no longer states that {guarantee} — Rule 3a exists "
+                          "because Rule 3 as written was satisfied by a control that never "
+                          "worked (lessons/0008)")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -1062,6 +1102,7 @@ def main() -> int:
     check_consent_contract(r)
     check_schema_prefixes(r)
     check_tool_resolution(r)
+    check_control_efficacy(r)
     return r.emit()
 
 
