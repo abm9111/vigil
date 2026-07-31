@@ -99,14 +99,22 @@ def validate(node: Any, schema: dict[str, Any], root: dict[str, Any], path: str)
 
     expected = schema.get("type")
     if expected:
-        want = TYPES.get(expected)
-        if want is None:
-            raise GateError(f"{path}: unknown type {expected!r}")
-        # bool is an int subclass in Python; an integer field must not accept True.
-        if expected in ("integer", "number") and isinstance(node, bool):
-            errs.append(f"{path}: expected {expected}, got boolean")
-        elif not isinstance(node, want):
-            errs.append(f"{path}: expected {expected}, got {type(node).__name__}")
+        # A type may be a list — {"type": ["integer", "null"]} is how the ceiling field says
+        # "a number, or explicitly nothing". Treating that as an unknown type would fail closed
+        # on a legitimate schema, which is a different bug from failing closed on a broken one.
+        names = expected if isinstance(expected, list) else [expected]
+        wants: list[type | tuple[type, ...]] = []
+        for name in names:
+            want = TYPES.get(name)
+            if want is None:
+                raise GateError(f"{path}: unknown type {name!r}")
+            wants.append(want)
+        numeric_only = all(n in ("integer", "number") for n in names)
+        if numeric_only and isinstance(node, bool):
+            # bool is an int subclass in Python; an integer field must not accept True.
+            errs.append(f"{path}: expected {'/'.join(names)}, got boolean")
+        elif not any(isinstance(node, w) for w in wants):
+            errs.append(f"{path}: expected {'/'.join(names)}, got {type(node).__name__}")
             return errs  # structure is wrong; deeper checks would be noise
 
     if isinstance(node, str) and "pattern" in schema and not re.search(schema["pattern"], node):
@@ -181,6 +189,17 @@ def check_bundle(path: Path, bundle_schema: dict[str, Any],
     if isinstance(records, list):
         for i, record in enumerate(records):
             errs += validate(record, record_schema, record_schema, f"{path.name}.records[{i}]")
+            # CONSENT IS STRUCTURAL, NOT PROCEDURAL. `shared` has no default, so a record from
+            # a run that never asked cannot answer, and cannot be bundled. Silence is
+            # unshareable by construction — the first real run wrote a record, disclosed it,
+            # and never put the question, which is exactly the case a policy would have missed.
+            if isinstance(record, dict) and record.get("shared") != "asked-accepted":
+                got = record.get("shared", "absent")
+                errs.append(
+                    f"{path.name}.records[{i}]: shared={got!r} — only a record whose owner was "
+                    "asked and said yes may be contributed. An absent value means the run never "
+                    "put the question, which is not consent."
+                )
     errs += scan_leaks(raw)
     return errs
 

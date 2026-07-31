@@ -2,33 +2,49 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/OWNER/REPO/schemas/run-record.schema.json",
   "title": "VIGIL run record",
-  "description": "One audit run, reduced to VIGIL's own vocabulary. THE PRIVACY GUARANTEE IS STRUCTURAL: every string in this schema is an enum or a bounded pattern, and additionalProperties is false at every level. A file path, repo name, hostname, customer name or finding description has no field to live in — it is not redacted, it is unrepresentable. Adding a free-text field to this file removes that guarantee, which is why L25 refuses one.",
+  "description": "One audit run, reduced to VIGIL's own vocabulary. THE PRIVACY GUARANTEE IS STRUCTURAL: every string is an enum or a bounded pattern and additionalProperties is false at every level, so a path, repo name, hostname or finding description is unrepresentable rather than redacted. Adding a free-text field removes that guarantee, which is why L25 refuses one. REVISED 2026-07-31 against the first real run record: the original was written without ever having seen one and rejected it on 100+ counts, none of which were privacy violations. Where the disagreement was arbitrary, the observed shape wins — a schema is a description of what runs produce, and a gratuitous structural preference is what made version 1 reject everything.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "vigil_version", "mode", "clusters"],
+  "required": ["schema_version", "mode", "clusters"],
   "properties": {
     "schema_version": { "const": 1 },
-    "vigil_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
-    "mode": {
-      "enum": ["scan", "audit", "siege", "watch", "score", "compare"]
+    "vigil_version": {
+      "description": "'unversioned' is permitted and is itself a signal: the skill could not self-identify, so any cross-version comparison of this record is unsound.",
+      "type": "string",
+      "pattern": "^([0-9]+\\.[0-9]+\\.[0-9]+|unversioned)$"
+    },
+    "mode": { "enum": ["scan", "audit", "siege", "watch", "score", "compare"] },
+    "timestamp_bucket": {
+      "description": "Quarter granularity. Coarse enough not to fingerprint a session, fine enough to detect version drift across a corpus.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-Q[1-4]$"
     },
     "stack": {
-      "description": "Detected ecosystems. A bounded enum, not a dependency list — 'we found a package.json' is a fact about a class of project, 'we found @acme/billing-sdk' is a fact about a company.",
+      "description": "Detected ecosystems and frameworks. A bounded enum, not a dependency list — 'fastapi' is a fact about a class of project, '@acme/billing-sdk' is a fact about a company.",
       "type": "array",
       "uniqueItems": true,
       "items": {
         "enum": ["python", "node", "typescript", "go", "rust", "java", "ruby", "php",
                  "dotnet", "solidity", "swift", "kotlin", "docker", "terraform",
-                 "kubernetes", "sql", "other"]
+                 "kubernetes", "sql", "fastapi", "django", "flask", "express", "react",
+                 "vue", "next", "svelte", "postgres", "mysql", "sqlite", "mongodb",
+                 "redis", "github-actions", "gitlab-ci", "other"]
       }
     },
-    "size_bucket": {
-      "description": "Bucketed, never exact. An exact file count is a weak fingerprint of a specific repo.",
-      "enum": ["xs", "s", "m", "l", "xl"]
-    },
+    "repo_size_bucket": { "enum": ["tiny", "small", "medium", "large", "huge"] },
     "duration_bucket": {
-      "description": "Bucketed for the same reason as size, plus: wall-clock timing correlates with a machine.",
-      "enum": ["under_1m", "1_5m", "5_15m", "15_30m", "over_30m"]
+      "enum": ["under-1min", "1-5min", "5-10min", "10-30min", "over-30min"]
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "available": { "$ref": "#/definitions/toolList" },
+        "missing": {
+          "description": "Aggregated across a corpus, this is the preflight gap report.",
+          "$ref": "#/definitions/toolList"
+        }
+      }
     },
     "clusters": {
       "type": "array",
@@ -38,66 +54,72 @@
         "additionalProperties": false,
         "required": ["prefix", "verdict"],
         "properties": {
-          "prefix": {
-            "enum": ["VIGIL-AIML", "VIGIL-API", "VIGIL-CHAIN", "VIGIL-CODE", "VIGIL-COMP",
-                     "VIGIL-DATA", "VIGIL-EGRESS", "VIGIL-FE", "VIGIL-INFRA",
-                     "VIGIL-PERF", "VIGIL-SEC"]
-          },
+          "prefix": { "$ref": "#/definitions/clusterPrefix" },
           "verdict": {
-            "description": "scored = a probe ran and produced evidence. na = genuinely not applicable to this stack. ne = NO EVIDENCE: applicable, but nothing could prove it either way. The ne count across many runs is the empirical answer to D1.",
+            "description": "scored = a probe ran and produced evidence. na = not applicable, and must cite a trigger. ne = NO EVIDENCE: applicable, but nothing could evidence it either way.",
             "enum": ["scored", "na", "ne"]
           },
           "na_trigger": {
-            "description": "Which applicability trigger justified an na verdict. Present only when verdict is na — an unexplained na is the cheap escape scoring.md warns about.",
-            "enum": ["no_matching_files", "no_matching_manifest", "stack_absent",
-                     "explicitly_out_of_scope"]
+            "enum": ["no-matching-files", "no-matching-manifest", "stack-absent",
+                     "no-contract-files", "explicitly-out-of-scope"]
           },
-          "findings": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "Counts only. Never the findings themselves.",
-            "properties": {
-              "critical": { "type": "integer", "minimum": 0 },
-              "high": { "type": "integer", "minimum": 0 },
-              "medium": { "type": "integer", "minimum": 0 },
-              "low": { "type": "integer", "minimum": 0 },
-              "info": { "type": "integer", "minimum": 0 }
-            }
+          "ceiling": {
+            "description": "THE D1 SIGNAL. The evidence ceiling this cluster could reach. A ceiling below 100 means no cluster-specific probe exists, so the score is bounded by what could not be checked. Aggregated across real runs this answers D1 empirically. null when the cluster did not score.",
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 100
           },
-          "tools_used": { "$ref": "#/definitions/toolList" },
-          "tools_missing": {
-            "description": "Tools the cluster wanted and could not find. Aggregated, this is the preflight gap report.",
-            "$ref": "#/definitions/toolList"
-          }
+          "critical": { "type": "integer", "minimum": 0 },
+          "high": { "type": "integer", "minimum": 0 },
+          "medium": { "type": "integer", "minimum": 0 },
+          "low": { "type": "integer", "minimum": 0 },
+          "info": { "type": "integer", "minimum": 0 }
         }
       }
     },
     "correlations": {
       "type": "array",
-      "uniqueItems": true,
       "items": {
-        "enum": ["ENDPOINT_STACK", "DATA_EXPOSURE_CHAIN", "INJECTION_WITH_PRIVILEGE",
-                 "OBSERVABILITY_BLINDSPOT", "DEPENDENCY_AND_REACHABILITY",
-                 "CONFIG_SECRET_EXPOSURE", "AUTH_BYPASS_WITH_SCOPE", "TRUST_LAUNDERING",
-                 "DESTRUCTIVE_BEFORE_VALIDATE", "INTEGRITY_THEATER"]
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pattern"],
+        "properties": {
+          "pattern": {
+            "enum": ["ENDPOINT_STACK", "DATA_EXPOSURE_CHAIN", "INJECTION_WITH_PRIVILEGE",
+                     "OBSERVABILITY_BLINDSPOT", "DEPENDENCY_AND_REACHABILITY",
+                     "CONFIG_SECRET_EXPOSURE", "AUTH_BYPASS_WITH_SCOPE", "TRUST_LAUNDERING",
+                     "DESTRUCTIVE_BEFORE_VALIDATE", "INTEGRITY_THEATER"]
+          },
+          "severity": { "$ref": "#/definitions/severity" },
+          "primary": { "$ref": "#/definitions/clusterPrefix" },
+          "constituents": { "type": "integer", "minimum": 0 }
+        }
       }
     },
-    "score": { "type": "integer", "minimum": 0, "maximum": 100 },
-    "grade": { "enum": ["A", "B", "C", "D", "F"] },
+    "false_positives_withdrawn": {
+      "description": "Findings the auditor produced and then retracted before reporting. A rising count across a corpus means the rules are noisy upstream of the human.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "verdict": { "enum": ["pass", "fail", "incomplete"] },
+    "partial_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "capped_to": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "cap_reason": { "enum": ["critical", "high", "medium", "ne", "none"] },
+    "transmitted": { "const": false },
+    "shared": {
+      "description": "THE CONSENT RECORD. Deliberately has no default and is not required here: a record that was never asked cannot answer, and privacy_gate.py refuses to bundle any record lacking 'asked-accepted'. Consent is therefore structural — silence is unshareable by construction rather than by policy.",
+      "enum": ["asked-accepted", "asked-declined"]
+    },
     "outcomes": {
-      "description": "THE LEARNING SIGNAL. What the human did with each finding. A finding dismissed as a false positive across many runs is a rule that needs changing — this is the only field that tells VIGIL it was wrong, and it still carries no content.",
+      "description": "THE LEARNING SIGNAL. What the human did with each finding — the only field carrying a judgement about VIGIL rather than about the run.",
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["prefix", "severity", "disposition"],
         "properties": {
-          "prefix": {
-            "enum": ["VIGIL-AIML", "VIGIL-API", "VIGIL-CHAIN", "VIGIL-CODE", "VIGIL-COMP",
-                     "VIGIL-DATA", "VIGIL-EGRESS", "VIGIL-FE", "VIGIL-INFRA",
-                     "VIGIL-PERF", "VIGIL-SEC", "CORR"]
-          },
-          "severity": { "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"] },
+          "prefix": { "$ref": "#/definitions/clusterPrefix" },
+          "severity": { "$ref": "#/definitions/severity" },
           "disposition": {
             "enum": ["accepted", "false_positive", "duplicate", "deferred",
                      "wrong_severity", "not_reachable"]
@@ -108,10 +130,17 @@
     }
   },
   "definitions": {
+    "clusterPrefix": {
+      "description": "The cluster prefixes exactly as RULES.md Rule 6 defines them. NOT the finding-ID form: 'VIGIL-SEC-001' is an ID, 'SEC' is the prefix. Version 1 of this schema demanded 'VIGIL-SEC' and so contradicted RULES.md; L29 now cross-validates this list against it.",
+      "enum": ["SEC", "CODE", "API", "DATA", "INFRA", "FE", "PERF", "COMP", "AIML",
+               "EGRESS", "CHAIN", "CORR"]
+    },
+    "severity": { "enum": ["critical", "high", "medium", "low", "info"] },
     "tool": {
-      "enum": ["bandit", "semgrep", "gitleaks", "trufflehog", "detect-secrets", "pip-audit",
-               "ruff", "mypy", "eslint", "tsc", "trivy", "hadolint", "slither", "aderyn",
-               "echidna", "codeql", "npm-audit", "cargo-audit", "govulncheck", "none"]
+      "enum": ["git", "bandit", "semgrep", "gitleaks", "trufflehog", "detect-secrets",
+               "pip-audit", "ruff", "mypy", "eslint", "tsc", "trivy", "hadolint", "slither",
+               "aderyn", "echidna", "codeql", "npm-audit", "cargo-audit", "govulncheck",
+               "sqlfluff", "none"]
     },
     "toolList": {
       "type": "array",

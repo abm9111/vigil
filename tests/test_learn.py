@@ -42,13 +42,14 @@ def record(*, egress_ne: bool = False, fp: int = 0, outcomes: int = 4,
         "schema_version": 1, "vigil_version": version, "mode": "audit",
         "stack": stack or ["python"],
         "clusters": [
-            {"prefix": "VIGIL-SEC", "verdict": "scored", "findings": {"high": 1}},
-            {"prefix": "VIGIL-EGRESS", "verdict": "ne" if egress_ne else "scored"},
-            {"prefix": "VIGIL-CHAIN", "verdict": "na", "na_trigger": "stack_absent"},
+            {"prefix": "SEC", "verdict": "scored", "high": 1},
+            {"prefix": "EGRESS", "verdict": "ne" if egress_ne else "scored"},
+            {"prefix": "CHAIN", "verdict": "na", "na_trigger": "stack-absent"},
         ],
-        "score": 70, "grade": "C",
+        "partial_score": 70,
+        "shared": "asked-accepted",
         "outcomes": [
-            {"prefix": "VIGIL-CODE", "severity": "LOW",
+            {"prefix": "CODE", "severity": "low",
              "disposition": "false_positive" if i < fp else "accepted", "tool": "ruff"}
             for i in range(outcomes)
         ],
@@ -65,17 +66,17 @@ def test_na_is_not_counted_as_missing_evidence() -> None:
     would make every Python repo look like Blockchain coverage was broken.
     """
     rates = _ne_rates([record()])
-    assert "VIGIL-CHAIN" not in rates, "an N/A cluster leaked into the no-evidence denominator"
-    assert rates["VIGIL-EGRESS"] == 0.0
+    assert "CHAIN" not in rates, "an N/A cluster leaked into the no-evidence denominator"
+    assert rates["EGRESS"] == 0.0
 
 
 def test_ne_rate_is_per_contributor_not_pooled() -> None:
-    assert _ne_rates([record(egress_ne=True)] * 3)["VIGIL-EGRESS"] == 1.0
-    assert _ne_rates([record(egress_ne=True), record()])["VIGIL-EGRESS"] == 0.5
+    assert _ne_rates([record(egress_ne=True)] * 3)["EGRESS"] == 1.0
+    assert _ne_rates([record(egress_ne=True), record()])["EGRESS"] == 0.5
 
 
 def test_fp_rate_counts_dispositions() -> None:
-    assert _fp_rates([record(fp=2, outcomes=4)])["VIGIL-CODE"] == 0.5
+    assert _fp_rates([record(fp=2, outcomes=4)])["CODE"] == 0.5
 
 
 # ------------------------------------------------------------------- the load-bearing property
@@ -105,7 +106,7 @@ def test_a_genuine_signal_still_fires() -> None:
     corpus = {f"dev{i}": [record(egress_ne=i < 7) for _ in range(3)] for i in range(10)}
     signals = corpus_candidates(corpus)
     assert signals, "7 of 10 contributors seeing no evidence produced no signal"
-    assert any("VIGIL-EGRESS" in why for _, why in signals)
+    assert any("EGRESS" in why for _, why in signals)
 
 
 def test_below_the_contributor_floor_there_is_no_signal() -> None:
@@ -193,13 +194,13 @@ def test_draft_never_prefills_prose() -> None:
     A stub that writes plausible-sounding analysis gets committed as-is, and the ledger fills
     with lessons nobody actually thought about.
     """
-    text = draft([("cluster carries weight it cannot evidence", "VIGIL-EGRESS in 7 of 10")])
+    text = draft([("cluster carries weight it cannot evidence", "EGRESS in 7 of 10")])
     assert text.count("FILL IN") >= 4
     assert "status: open" in text
 
 
 def test_draft_carries_the_redaction_warning() -> None:
-    text = draft([("rule fires on a shape it should not", "VIGIL-CODE in 5 of 8")])
+    text = draft([("rule fires on a shape it should not", "CODE in 5 of 8")])
     assert "repository, path, host, company or finding text" in text
 
 

@@ -40,6 +40,7 @@ Checks:
   L27 every contributed corpus bundle still passes the privacy gate
   L28 the end-of-run consent contract is intact (default no, silence is not consent,
       a decline is honoured, the record can be shown in full, there is an off switch)
+  L29 the record schema's cluster vocabulary matches RULES.md
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -833,7 +834,10 @@ def check_proof_entries(r: Report) -> None:
     if not proof.is_dir():
         return
     vocab = dict(PROOF_VOCAB)
-    vocab["cluster"] = {f"VIGIL-{p}" for p in cluster_prefixes()} | {"CORR"}
+    # Bare prefixes, as RULES.md Rule 6 defines them — `SEC`, not `VIGIL-SEC`. Using the
+    # finding-ID form here was the same mistake the record schema made, and having two
+    # vocabularies for one concept is precisely what L29 exists to stop.
+    vocab["cluster"] = set(cluster_prefixes()) | {"CORR"}
 
     seen: dict[str, Path] = {}
     for f in sorted(proof.glob("[0-9]*.md")):
@@ -939,6 +943,45 @@ def check_consent_contract(r: Report) -> None:
                       "router is what runs, so the consent step must be visible there")
 
 
+def check_schema_prefixes(r: Report) -> None:
+    """L29 — the record schema's cluster vocabulary must match RULES.md.
+
+    Version 1 of the schema required `VIGIL-SEC` where RULES.md Rule 6 defines the prefix as
+    `SEC` — `VIGIL-SEC-001` is the finding *ID*, not the prefix. Nothing caught it, because
+    every check compared the schema to itself and every test used fixtures I wrote from the
+    same misunderstanding. The first real run record failed validation on 100+ counts, none of
+    them privacy violations; it was a vocabulary disagreement between two files that both
+    claimed to define the same thing.
+
+    L3 already ties RULES.md to the cluster files. This ties the schema to RULES.md, so the
+    three cannot drift apart in a way only a live run would reveal.
+    """
+    schema_path = ROOT / "schemas" / "run-record.schema.json"
+    if not schema_path.exists():
+        return
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return  # L25 reports the malformed-JSON case
+    declared = schema.get("definitions", {}).get("clusterPrefix", {}).get("enum")
+    if not declared:
+        r.fail("L29", "run-record schema has no definitions.clusterPrefix enum — the cluster "
+                      "vocabulary must be declared in one place so it can be checked")
+        return
+
+    rules = (ROOT / "RULES.md").read_text(encoding="utf-8")
+    listed = set(re.findall(r"^- `([A-Z-]+)`\s+—", rules, re.M))
+    if not listed:
+        r.fail("L29", "could not parse the prefix list out of RULES.md")
+        return
+
+    for extra in sorted(set(declared) - listed):
+        r.fail("L29", f"schema permits cluster prefix {extra!r}, which RULES.md does not list")
+    for absent in sorted(listed - set(declared)):
+        r.fail("L29", f"RULES.md lists prefix {absent!r}, which the record schema rejects — "
+                      "a real run emitting it would be blocked by the privacy gate")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -972,6 +1015,7 @@ def main() -> int:
     check_proof_entries(r)
     check_corpus_bundles(r)
     check_consent_contract(r)
+    check_schema_prefixes(r)
     return r.emit()
 
 

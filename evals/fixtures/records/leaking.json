@@ -1,5 +1,5 @@
 {
-  "_comment": "DELIBERATELY DEFECTIVE FIXTURE — the privacy gate must BLOCK this file. Every value below is synthetic (alice / acme-billing are not real); see feedback in evals/fixtures/README if present. It models the realistic leak, not a malicious one: a contributor adding context to be helpful. Three separate violations, so the gate cannot pass by catching only the easy one.",
+  "_comment": "DELIBERATELY DEFECTIVE FIXTURE — the privacy gate must BLOCK this file. Every value is synthetic (alice / acme-billing are not real). It models the realistic leak, not a malicious one: a contributor adding context to be helpful. Several distinct violations, so the gate cannot pass by catching only the easy one. Note this key itself is a violation — a closed schema rejects even a comment, which is the property under test.",
   "schema_version": 1,
   "vigil_version": "0.4.0",
   "mode": "audit",
@@ -8,12 +8,12 @@
   "stack": ["python"],
   "clusters": [
     {
-      "prefix": "VIGIL-SEC",
+      "prefix": "SEC",
       "verdict": "scored",
       "evidence": "hardcoded credential in src/billing/charge.py:88",
-      "findings": { "high": 1 }
+      "high": 1
     }
   ],
-  "score": 44,
-  "grade": "F"
+  "partial_score": 44,
+  "verdict": "fail"
 }

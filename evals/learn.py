@@ -148,15 +148,42 @@ def report(records: list[dict[str, Any]]) -> list[str]:
     # 3. missing tools --------------------------------------------------------------
     missing: Counter[str] = Counter()
     for rec in records:
-        for cluster in rec.get("clusters", []):
-            missing.update(cluster.get("tools_missing", []))
+        missing.update(rec.get("tools", {}).get("missing", []))
     a("## 3. Tools preflight wanted and reality did not have")
     a("")
     if missing:
         for tool, count in missing.most_common():
-            a(f"- `{tool}` missing in {count} cluster-run(s)")
+            a(f"- `{tool}` missing in {count} run(s)")
     else:
         a("_none recorded_")
+    a("")
+
+    # 3b. evidence ceilings ----------------------------------------------------------
+    # The most direct D1 evidence in the record. A cluster that scores but is capped below
+    # 100 is telling you, per run, that no probe specific to it exists — so its contribution
+    # to the weighted average is bounded by what could not be checked.
+    capped: dict[str, list[int]] = defaultdict(list)
+    for rec in records:
+        for cluster in rec.get("clusters", []):
+            ceiling = cluster.get("ceiling")
+            if isinstance(ceiling, int):
+                capped[cluster["prefix"]].append(ceiling)
+    a("## 3b. Evidence ceilings — D1, straight from the record")
+    a("")
+    if capped:
+        a("| Cluster | Runs | Median ceiling | Ever reached 100? |")
+        a("|---|---|---|---|")
+        for prefix in sorted(capped, key=lambda p: sum(capped[p]) / len(capped[p])):
+            vals = sorted(capped[prefix])
+            med = vals[len(vals) // 2]
+            flag = " ⚠️" if med < 100 else ""
+            a(f"| {prefix} | {len(vals)} | {med}{flag} | "
+              f"{'yes' if max(vals) >= 100 else '**no**'} |")
+        a("")
+        a("A cluster that never reaches 100 has no probe of its own. That is not a scoring "
+          "quirk — it is the weighted average resting on something unmeasured.")
+    else:
+        a("_no ceilings recorded_")
     a("")
 
     # 4. n/a discipline --------------------------------------------------------------

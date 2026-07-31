@@ -51,11 +51,12 @@ yet · 🚫 unmechanizable — genuinely not machine-checkable, with the reason 
 
 Times VIGIL found something real on a codebase that was not its own. Entries name a **class** of finding and never a system — see [`proof/README.md`](proof/README.md).
 
-**1 entry** · 1 missed by the project's existing tooling
+**2 entries** · 2 missed by the project's existing tooling
 
 | Cluster | Severity | Tool | Missed by existing tooling | Finding class |
 |---|---|---|---|---|
-| VIGIL-SEC | HIGH | `gitleaks` | ✅ | [A credential can be "removed" in every sense a reviewer checks and still be published](proof/0001-secret-removed-from-tree-still-live-in-history.md) |
+| SEC | HIGH | `gitleaks` | ✅ | [A credential can be "removed" in every sense a reviewer checks and still be published](proof/0001-secret-removed-from-tree-still-live-in-history.md) |
+| EGRESS | HIGH | `none` | ✅ | [The strongest evidence against a README is usually already in the repository](proof/0002-readme-claim-contradicted-by-own-benchmark.md) |
 
 ## Contributing
 

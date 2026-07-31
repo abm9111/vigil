@@ -33,24 +33,35 @@ def schema() -> dict[str, Any]:
 
 
 def clean_record() -> dict[str, Any]:
+    """Modelled on the FIRST REAL run record, not on what I imagined one would look like."""
     return {
         "schema_version": 1,
         "vigil_version": "0.4.0",
         "mode": "audit",
-        "stack": ["python"],
-        "size_bucket": "m",
+        "timestamp_bucket": "2026-Q3",
+        "stack": ["python", "fastapi", "docker"],
+        "repo_size_bucket": "medium",
+        "duration_bucket": "10-30min",
+        "tools": {"available": ["git", "ruff", "gitleaks"], "missing": ["eslint", "tsc"]},
         "clusters": [
-            {"prefix": "VIGIL-SEC", "verdict": "scored",
-             "findings": {"critical": 0, "high": 1},
-             "tools_used": ["gitleaks"], "tools_missing": ["semgrep"]},
-            {"prefix": "VIGIL-CHAIN", "verdict": "na", "na_trigger": "stack_absent"},
+            {"prefix": "SEC", "verdict": "scored", "ceiling": 100, "critical": 0, "high": 1},
+            {"prefix": "DATA", "verdict": "scored", "ceiling": 85, "info": 1},
+            {"prefix": "FE", "verdict": "ne", "ceiling": None},
+            {"prefix": "CHAIN", "verdict": "na", "na_trigger": "no-contract-files"},
         ],
+        "correlations": [
+            {"pattern": "TRUST_LAUNDERING", "severity": "high", "primary": "EGRESS",
+             "constituents": 2},
+        ],
+        "verdict": "incomplete",
+        "partial_score": 71,
+        "capped_to": 59,
+        "cap_reason": "critical",
+        "transmitted": False,
+        "shared": "asked-accepted",
         "outcomes": [
-            {"prefix": "VIGIL-SEC", "severity": "HIGH", "disposition": "accepted",
-             "tool": "gitleaks"},
+            {"prefix": "SEC", "severity": "high", "disposition": "accepted", "tool": "gitleaks"},
         ],
-        "score": 71,
-        "grade": "C",
     }
 
 
@@ -93,14 +104,14 @@ def test_unknown_cluster_prefix_is_rejected(schema: dict[str, Any]) -> None:
 
 def test_out_of_range_score_is_rejected(schema: dict[str, Any]) -> None:
     rec = clean_record()
-    rec["score"] = 420
+    rec["partial_score"] = 420
     assert any("maximum" in e for e in check(rec, schema))
 
 
 def test_boolean_is_not_accepted_as_an_integer(schema: dict[str, Any]) -> None:
     """bool subclasses int in Python — a validator that forgets this accepts True as a score."""
     rec = clean_record()
-    rec["score"] = True
+    rec["partial_score"] = True
     assert any("boolean" in e for e in check(rec, schema))
 
 

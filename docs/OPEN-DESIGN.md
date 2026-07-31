@@ -143,7 +143,7 @@ publish.
 
 ## Checks that would catch the classes above
 
-`evals/check_repo.py` runs 28 structural checks. Every one was added after a real gap got past
+`evals/check_repo.py` runs 29 structural checks. Every one was added after a real gap got past
 the previous set. Known remaining blind spots, from Kimi's M11:
 
 | Class | Caught? | Note |

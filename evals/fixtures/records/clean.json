@@ -2,32 +2,36 @@
   "schema_version": 1,
   "vigil_version": "0.4.0",
   "mode": "audit",
-  "stack": ["python", "docker"],
-  "size_bucket": "m",
-  "duration_bucket": "5_15m",
+  "timestamp_bucket": "2026-Q3",
+  "stack": ["python", "fastapi", "postgres", "docker"],
+  "repo_size_bucket": "medium",
+  "duration_bucket": "10-30min",
+  "tools": {
+    "available": ["git", "ruff", "mypy", "bandit", "pip-audit", "semgrep", "gitleaks"],
+    "missing": ["eslint", "tsc", "sqlfluff"]
+  },
   "clusters": [
-    {
-      "prefix": "VIGIL-SEC",
-      "verdict": "scored",
-      "findings": { "critical": 0, "high": 1, "medium": 2, "low": 5 },
-      "tools_used": ["gitleaks", "bandit"],
-      "tools_missing": ["semgrep"]
-    },
-    {
-      "prefix": "VIGIL-EGRESS",
-      "verdict": "ne"
-    },
-    {
-      "prefix": "VIGIL-CHAIN",
-      "verdict": "na",
-      "na_trigger": "stack_absent"
-    }
+    { "prefix": "SEC",    "verdict": "scored", "ceiling": 100, "critical": 1, "high": 2,
+      "medium": 4, "low": 6, "info": 0 },
+    { "prefix": "CODE",   "verdict": "scored", "ceiling": 100, "high": 1, "medium": 2 },
+    { "prefix": "DATA",   "verdict": "scored", "ceiling": 85,  "info": 1 },
+    { "prefix": "FE",     "verdict": "ne",     "ceiling": null },
+    { "prefix": "CHAIN",  "verdict": "na",     "na_trigger": "no-contract-files",
+      "ceiling": null }
   ],
-  "correlations": ["CONFIG_SECRET_EXPOSURE"],
-  "score": 71,
-  "grade": "C",
+  "correlations": [
+    { "pattern": "TRUST_LAUNDERING", "severity": "high", "primary": "EGRESS",
+      "constituents": 2 }
+  ],
+  "false_positives_withdrawn": 8,
+  "verdict": "incomplete",
+  "partial_score": 71,
+  "capped_to": 59,
+  "cap_reason": "critical",
+  "transmitted": false,
+  "shared": "asked-accepted",
   "outcomes": [
-    { "prefix": "VIGIL-SEC", "severity": "HIGH", "disposition": "accepted", "tool": "gitleaks" },
-    { "prefix": "VIGIL-CODE", "severity": "LOW", "disposition": "false_positive", "tool": "ruff" }
+    { "prefix": "SEC",  "severity": "high", "disposition": "accepted", "tool": "gitleaks" },
+    { "prefix": "CODE", "severity": "low",  "disposition": "false_positive", "tool": "ruff" }
   ]
 }

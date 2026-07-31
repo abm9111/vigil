@@ -141,8 +141,13 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     # The mutation that matters most: one unconstrained string reopens the whole surface,
     # and every other test in this file still passes.
     ("L25", lambda r: edit(r / "schemas" / "run-record.schema.json",
-                           '"score": { "type": "integer"',
-                           '"notes": { "type": "string" },\n    "score": { "type": "integer"')),
+                           '"partial_score": { "type": "integer"',
+                           '"notes": { "type": "string" },\n    '
+                           '"partial_score": { "type": "integer"')),
+    # Drop a prefix RULES.md defines. A real run emitting it would be silently blocked by the
+    # privacy gate — which is exactly what happened before L29 existed.
+    ("L29", lambda r: edit(r / "schemas" / "run-record.schema.json",
+                           '"SEC", "CODE",', '"CODE",')),
     ("L26", lambda r: edit(r / "proof" / "0001-secret-removed-from-tree-still-live-in-history.md",
                            "severity: HIGH", "severity: SEVERE")),
     ("L28", flip_share_default),
@@ -172,7 +177,8 @@ def test_l27_regates_a_corpus_bundle(repo: Path) -> None:
         "schema_version": 1, "contributor": "someone", "vigil_version": "0.4.0",
         "records": [{
             "schema_version": 1, "vigil_version": "0.4.0", "mode": "audit",
-            "clusters": [{"prefix": "VIGIL-SEC", "verdict": "scored"}],
+            "clusters": [{"prefix": "SEC", "verdict": "scored"}],
+            "shared": "asked-accepted",
         }],
     }
     (corpus / "someone.json").write_text(json.dumps(clean), encoding="utf-8")

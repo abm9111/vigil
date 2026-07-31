@@ -1,7 +1,7 @@
 ---
 id: 0001
 date: 2026-07-31
-cluster: VIGIL-SEC
+cluster: SEC
 severity: HIGH
 tool: gitleaks
 ecosystem: python
