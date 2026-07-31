@@ -32,6 +32,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "schemas" / "run-record.schema.json"
+BUNDLE_SCHEMA_PATH = ROOT / "schemas" / "bundle.schema.json"
 
 # Defence in depth only. The schema is the mechanism; if one of these fires the schema leaked.
 LEAK_SHAPES: list[tuple[str, str]] = [
@@ -156,6 +157,34 @@ def scan_leaks(raw: str) -> list[str]:
     return out
 
 
+def check_bundle(path: Path, bundle_schema: dict[str, Any],
+                 record_schema: dict[str, Any]) -> list[str]:
+    """Validate a contributed bundle: envelope first, then every record inside it.
+
+    Two schemas rather than one cross-file $ref, because resolving a $ref to another file
+    means the validator must fetch something to decide, and this gate refuses to pass anything
+    it had to reach for. The composition is explicit so the failure mode is obvious: a bundle
+    whose envelope is fine but whose third record smuggles a path is still blocked, and the
+    error says which record.
+    """
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return [f"cannot read {path.name}: {exc}"]
+    try:
+        bundle = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        return [f"{path.name} is not valid JSON: {exc}"]
+
+    errs = validate(bundle, bundle_schema, bundle_schema, path.name)
+    records = bundle.get("records") if isinstance(bundle, dict) else None
+    if isinstance(records, list):
+        for i, record in enumerate(records):
+            errs += validate(record, record_schema, record_schema, f"{path.name}.records[{i}]")
+    errs += scan_leaks(raw)
+    return errs
+
+
 def check_file(path: Path, schema: dict[str, Any]) -> list[str]:
     try:
         raw = path.read_text(encoding="utf-8")
@@ -172,6 +201,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("records", nargs="*", type=Path)
     ap.add_argument("--dir", type=Path, help="validate every *.json in this directory")
+    ap.add_argument("--bundles", action="store_true",
+                    help="treat inputs as contributed bundles (envelope + every record inside)")
     args = ap.parse_args()
 
     targets: list[Path] = list(args.records)
@@ -179,21 +210,24 @@ def main() -> int:
         if not args.dir.is_dir():
             print(f"--dir {args.dir} is not a directory", file=sys.stderr)
             return 2
-        targets += sorted(args.dir.glob("*.json"))
+        targets += sorted(args.dir.rglob("*.json") if args.bundles
+                          else args.dir.glob("*.json"))
     if not targets:
-        print("no run records given — nothing to clear", file=sys.stderr)
+        print("nothing to clear", file=sys.stderr)
         return 2
 
     try:
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+        bundle_schema = json.loads(BUNDLE_SCHEMA_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        print(f"cannot load {SCHEMA_PATH}: {exc}", file=sys.stderr)
+        print(f"cannot load schema: {exc}", file=sys.stderr)
         return 2
 
     blocked = 0
     for path in targets:
         try:
-            errs = check_file(path, schema)
+            errs = (check_bundle(path, bundle_schema, schema) if args.bundles
+                    else check_file(path, schema))
         except GateError as exc:
             errs = [str(exc)]
         except Exception as exc:  # fail closed on anything unexpected — see module docstring

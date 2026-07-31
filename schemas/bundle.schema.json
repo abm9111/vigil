@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/OWNER/REPO/schemas/bundle.schema.json",
+  "title": "VIGIL contributed bundle",
+  "description": "What one contributor submits: their run records, plus the one identity field the system needs. ATTRIBUTION LIVES HERE AND NOWHERE ELSE. Run records carry no install-id, machine-id or repo-hash by design, so records cannot be correlated to each other or to a person. Submitting a bundle means opening a pull request, which is already a non-anonymous act, so naming the contributor at this layer costs no privacy the PR did not already spend. Do not push identity down into the records to make aggregation easier — that trade is the whole thing this design refuses. NOTE: `records` is deliberately opaque here. A cross-file $ref would force the validator to fetch a second schema to decide, and privacy_gate.py fails closed on any $ref it cannot resolve locally. Instead the gate validates the envelope with THIS schema and every element against run-record.schema.json, in that order — see check_bundle().",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contributor", "records"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "contributor": {
+      "description": "The submitting handle. Charset follows GitHub's rule so it cannot carry a sentence.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$"
+    },
+    "vigil_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "records": {
+      "type": "array",
+      "minItems": 1
+    }
+  }
+}

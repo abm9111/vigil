@@ -24,7 +24,7 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "evals"))
 
-from privacy_gate import GateError, scan_leaks, validate  # noqa: E402
+from privacy_gate import GateError, check_bundle, scan_leaks, validate  # noqa: E402
 
 
 @pytest.fixture
@@ -152,3 +152,58 @@ def test_leak_scan_catches_shapes(payload: str) -> None:
 def test_leak_scan_is_quiet_on_a_clean_record() -> None:
     """A noisy gate trains people to ignore it, which is how L19's TLD list got tightened."""
     assert scan_leaks(json.dumps(clean_record())) == []
+
+
+# ---------------------------------------------------------------- bundles (multi-contributor)
+
+
+@pytest.fixture
+def bundle_schema() -> dict[str, Any]:
+    return json.loads((REPO / "schemas" / "bundle.schema.json").read_text(encoding="utf-8"))
+
+
+def write_bundle(tmp_path: Path, payload: dict[str, Any]) -> Path:
+    p = tmp_path / "b.json"
+    p.write_text(json.dumps(payload), encoding="utf-8")
+    return p
+
+
+def test_clean_bundle_passes(
+    tmp_path: Path, bundle_schema: dict[str, Any], schema: dict[str, Any]
+) -> None:
+    p = write_bundle(tmp_path, {"schema_version": 1, "contributor": "dev0",
+                                "vigil_version": "0.4.0", "records": [clean_record()]})
+    assert check_bundle(p, bundle_schema, schema) == []
+
+
+def test_bundle_validates_every_record_not_just_the_first(
+    tmp_path: Path, bundle_schema: dict[str, Any], schema: dict[str, Any]
+) -> None:
+    """The realistic failure: a long submission where only one record is dirty.
+
+    Checking the envelope, or only records[0], would pass this — and the whole point of
+    bundling is that submissions are long enough that nobody reads every record by hand.
+    """
+    dirty = clean_record()
+    dirty["finding"] = "SQL injection in src/pay.py:12"
+    p = write_bundle(tmp_path, {"schema_version": 1, "contributor": "dev0",
+                                "records": [clean_record(), clean_record(), dirty]})
+    errs = check_bundle(p, bundle_schema, schema)
+    assert any("records[2]" in e for e in errs), errs
+
+
+def test_contributor_handle_cannot_be_a_sentence(
+    tmp_path: Path, bundle_schema: dict[str, Any], schema: dict[str, Any]
+) -> None:
+    """The one identity field is also the one place prose could hide in an envelope."""
+    p = write_bundle(tmp_path, {"schema_version": 1,
+                                "contributor": "acme corp internal security team",
+                                "records": [clean_record()]})
+    assert any("contributor" in e for e in check_bundle(p, bundle_schema, schema))
+
+
+def test_bundle_with_no_records_is_rejected(
+    tmp_path: Path, bundle_schema: dict[str, Any], schema: dict[str, Any]
+) -> None:
+    p = write_bundle(tmp_path, {"schema_version": 1, "contributor": "dev0", "records": []})
+    assert check_bundle(p, bundle_schema, schema)

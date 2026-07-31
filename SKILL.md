@@ -129,6 +129,8 @@ See [FLAGS.md](FLAGS.md) for full details.
 | [engines/tracking.md](engines/tracking.md) | Bounty, CVE, engagement & revenue tracking |
 | [engines/context-loader.md](engines/context-loader.md) | Context file discovery, parsing, and application (v2) |
 | [engines/telemetry.md](engines/telemetry.md) | Content-free run records — how VIGIL learns from real use without ingesting it |
+| [docs/FIELD-LOOP.md](docs/FIELD-LOOP.md) | The full loop with ten contributors, and every place it is allowed to stop |
+| [corpus/README.md](corpus/README.md) | Contributed bundles — why rates count contributors, not rows |
 | [CONTEXT.md](CONTEXT.md) | Design and usage guide for project context awareness (v2) |
 | [compliance-maps/](compliance-maps/) | SOC2, ISO 27001, OWASP 2025 mappings |
 | [companions/](companions/) | 7 micro-commands (diff, explain, baseline, bounty, recon, triage, track) |

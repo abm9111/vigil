@@ -21,6 +21,11 @@ The release where the project started producing its own evidence.
   `evals/privacy_gate.py` and `evals/learn.py`. Run records are content-free *by construction*
   (closed schema, every string an enum) and never leave the machine without an explicit human
   act. `proof/` records what VIGIL found on real codebases, the counterpart to `lessons/`.
+- **Multi-contributor corpus** — `corpus/`, `schemas/bundle.schema.json` and
+  `learn.py --corpus`. Rates are computed per contributor and then contributors are counted, so
+  one heavy submitter cannot outvote nine others; a signal needs 3+ contributors and 60%
+  agreement. `docs/FIELD-LOOP.md` walks the whole loop at ten users, including the four places
+  it is deliberately allowed to stop.
 - **`lessons/`** — a ledger of times VIGIL was wrong, with `LEDGER.md` generated from it.
 - **`tests/`** — pytest suite; every check must be demonstrably able to fail.
 - Apache-2.0 `LICENSE` + `NOTICE`, `SECURITY.md`, `CONTRIBUTING.md`, CI, issue/PR templates.

@@ -37,6 +37,7 @@ Checks:
   L24 every prose restatement of the check count matches the real one
   L25 the run-record schema stays closed — no free-text field can be added to it
   L26 proof entries are well-formed and use the controlled vocabulary
+  L27 every contributed corpus bundle still passes the privacy gate
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -857,6 +858,34 @@ def check_proof_entries(r: Report) -> None:
                           "entry is an incident report, not proof of a class")
 
 
+def check_corpus_bundles(r: Report) -> None:
+    """L27 — every contributed bundle in corpus/ still passes the privacy gate.
+
+    The gate runs when a bundle is submitted. That is the wrong time to stop checking: the
+    schema tightens, a leak shape gets added, someone edits a bundle by hand in a later PR to
+    "fix" a count. A file that was clean on the day it merged is not the same claim as a file
+    that is clean now, and corpus/ is public and permanent.
+
+    So this re-derives it on every push. Cheap — the whole corpus is small JSON — and it means
+    the guarantee is continuous rather than a fact about one moment in the git history.
+    """
+    corpus = ROOT / "corpus"
+    if not corpus.is_dir():
+        return
+    bundles = sorted(corpus.rglob("*.json"))
+    if not bundles:
+        return
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "evals" / "privacy_gate.py"), "--bundles",
+         *[str(b) for b in bundles]],
+        capture_output=True, text=True, check=False,
+    )
+    if proc.returncode != 0:
+        for line in (proc.stderr or proc.stdout).strip().splitlines():
+            if line.strip().startswith("-") or line.startswith("BLOCKED"):
+                r.fail("L27", line.strip().lstrip("- "))
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -888,6 +917,7 @@ def main() -> int:
     check_stated_check_count(r)
     check_record_schema_closed(r)
     check_proof_entries(r)
+    check_corpus_bundles(r)
     return r.emit()
 
 

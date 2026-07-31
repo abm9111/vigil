@@ -16,6 +16,7 @@ repo passes, so a test that fails for the wrong reason is distinguishable from a
 """
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -119,8 +120,10 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     ("L22", lambda r: edit(r / "SKILL.md", "name: vigil", "nom: vigil")),
     ("L23", lambda r: edit(r / "evals" / "assertions" / "vigil.json",
                            '"id": 2,', '"id": 1,')),
-    ("L24", lambda r: edit(r / "README.md",
-                           "# 26 structural checks", "# 99 structural checks")),
+    # Inject a bogus claim rather than mutating the real one: anchoring on the current count
+    # makes this test fail every time a check is added, which is the opposite of useful.
+    ("L24", lambda r: edit(r / "README.md", "## Status",
+                           "It runs 999 checks.\n\n## Status")),
     # The mutation that matters most: one unconstrained string reopens the whole surface,
     # and every other test in this file still passes.
     ("L25", lambda r: edit(r / "schemas" / "run-record.schema.json",
@@ -140,6 +143,32 @@ def test_check_fires_when_broken(
     code, out = run_check(repo)
     assert code != 0, f"{check_id}: repo was broken but the self-audit passed:\n{out}"
     assert f"[{check_id}]" in out, f"expected {check_id} to fire, got:\n{out}"
+
+
+def test_l27_regates_a_corpus_bundle(repo: Path) -> None:
+    """L27 is separate: the real repo ships no bundles, so the test supplies one.
+
+    Both halves matter. A clean bundle must not fire — a check that flags every contribution
+    trains maintainers to ignore it. A bundle that leaks must fire even though it was
+    presumably gated when it merged, because the schema and the leak shapes both move.
+    """
+    corpus = repo / "corpus"
+    clean = {
+        "schema_version": 1, "contributor": "someone", "vigil_version": "0.4.0",
+        "records": [{
+            "schema_version": 1, "vigil_version": "0.4.0", "mode": "audit",
+            "clusters": [{"prefix": "VIGIL-SEC", "verdict": "scored"}],
+        }],
+    }
+    (corpus / "someone.json").write_text(json.dumps(clean), encoding="utf-8")
+    code, out = run_check(repo)
+    assert code == 0 and "[L27]" not in out, f"L27 fired on a clean bundle:\n{out}"
+
+    leaking = json.loads(json.dumps(clean))
+    leaking["records"][0]["repo_path"] = "/Users/alice/work/acme"
+    (corpus / "someone.json").write_text(json.dumps(leaking), encoding="utf-8")
+    code, out = run_check(repo)
+    assert code != 0 and "[L27]" in out, f"L27 did not re-gate a leaking bundle:\n{out}"
 
 
 def test_l5_catches_an_orphan(repo: Path) -> None:
@@ -176,6 +205,6 @@ def test_every_documented_check_has_a_test() -> None:
     """
     src = (REPO / "evals" / "check_repo.py").read_text(encoding="utf-8")
     documented = set(re.findall(r"^  (L\d+) ", src, re.M))
-    tested = {b[0] for b in BREAKERS} | {"L5", "L21"}
+    tested = {b[0] for b in BREAKERS} | {"L5", "L21", "L27"}
     missing = documented - tested
     assert not missing, f"checks with no failing-case test: {sorted(missing)}"

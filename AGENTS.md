@@ -15,7 +15,7 @@ of the self-audit exists to catch exactly that.
 ## Before you finish any change
 
 ```bash
-python3 evals/check_repo.py       # 26 structural checks · <1s · no LLM, no network
+python3 evals/check_repo.py       # 27 structural checks · <1s · no LLM, no network
 python3 evals/check_loadable.py   # the skill is still discoverable
 pytest tests/ -q                  # every check must be able to FAIL
 mypy && ruff check .              # config in pyproject.toml
@@ -67,6 +67,9 @@ that is a conversation, not a commit.
 | `evals/` | Self-audit, fixture measurement, ledger generation |
 | `tests/` | Proof that each check can fail |
 | `lessons/` | Times VIGIL was wrong → `LEDGER.md` |
+| `proof/` | Times VIGIL was right on someone else's code → `LEDGER.md` |
+| `schemas/`, `corpus/` | Field-learning input: closed record schema, contributed bundles |
+| `docs/FIELD-LOOP.md` | The whole loop at ten contributors, and where it is allowed to stop |
 | `docs/OPEN-DESIGN.md` | Open decisions, with the argument already made |
 
 ## If you are asked to improve VIGIL

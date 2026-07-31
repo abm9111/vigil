@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Structural self-audit (26 checks, no LLM, no network)
+      - name: Structural self-audit (27 checks, no LLM, no network)
         run: python3 evals/check_repo.py
 
       # The dashboard is generated, so a PR that adds a lesson must regenerate it. L18
@@ -44,6 +44,16 @@ jobs:
             echo "::error::privacy gate PASSED a record it must block"; exit 1
           fi
           echo "privacy gate correctly blocked the leaking record"
+
+      # Contributed bundles are public and permanent, so "it was clean when it merged" is not
+      # the claim that matters. L27 re-derives it inside check_repo; this runs the gate
+      # directly so a failure names the offending record instead of a check id.
+      - name: Contributed bundles are still clean
+        run: |
+          shopt -s nullglob
+          files=(corpus/*.json)
+          if [ ${#files[@]} -eq 0 ]; then echo "no bundles yet"; exit 0; fi
+          python3 evals/privacy_gate.py --bundles "${files[@]}"
 
       - name: Install dev dependencies
         run: pip install --quiet pytest mypy ruff

@@ -4,7 +4,7 @@ The most valuable thing you can send is **evidence that VIGIL was wrong**.
 
 That is not a formality. This project's core claim is that an auditing tool should be able to
 produce its own evidence — and three of the five defect classes it now catches were found by
-outside reviewers, not by its own 26 checks. The dashboard in [`LEDGER.md`](LEDGER.md) shows
+outside reviewers, not by its own 27 checks. The dashboard in [`LEDGER.md`](LEDGER.md) shows
 the automated self-audit missing four of six. A second reader is not redundancy here; it is the
 main detection mechanism.
 
@@ -60,7 +60,7 @@ Name the class, never the system.
 ```bash
 pip install -e ".[dev]"
 
-python3 evals/check_repo.py         # 26 structural checks, <1s, no LLM
+python3 evals/check_repo.py         # 27 structural checks, <1s, no LLM
 pytest tests/ -q                    # every check must be able to fail
 mypy && ruff check .                # config lives in pyproject.toml
 python3 evals/build_ledger.py       # regenerate LEDGER.md after adding a lesson
