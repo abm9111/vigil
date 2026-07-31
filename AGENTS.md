@@ -15,7 +15,7 @@ of the self-audit exists to catch exactly that.
 ## Before you finish any change
 
 ```bash
-python3 evals/check_repo.py       # 32 structural checks · <1s · no LLM, no network
+python3 evals/check_repo.py       # 33 structural checks · <1s · no LLM, no network
 python3 evals/check_loadable.py   # the skill is still discoverable
 pytest tests/ -q                  # every check must be able to FAIL
 mypy && ruff check .              # config in pyproject.toml
@@ -64,11 +64,11 @@ that is a conversation, not a commit.
 
 ## Mutating a prose check
 
-Several checks (`L28`, `L30`, `L31`, `L32`) assert that a rule is still *stated* in a Markdown file,
+Several checks (`L28`, `L30`-`L33`) assert that a rule is still *stated* in a Markdown file,
 because the thing they guard is executed by a model reading that file — there is no function to
 unit-test. This family does real work and has one specific failure mode:
 
-**A loose alternative in the pattern fails silently, toward green.** Three instances so far:
+**A loose alternative in the pattern fails silently, toward green.** Five instances so far:
 `L28` matched a bare `default —` that survived the default being flipped to *yes*; `L30`
 assumed a plain line break in a clause that wraps inside a blockquote; `L31` had `**no**` as an
 alternative, which matched an unrelated bolded "no" and stayed green after *not sufficient* was
@@ -85,6 +85,14 @@ the inversion, so it guards nothing.
 needs its text present. An inversion proves it keys on the part carrying the meaning — and it
 is also the realistic erosion, since nobody deletes a safety rule, they soften it. Converting
 `L30` and `L31` from deletions to inversions immediately exposed the `L31` pattern above.
+
+**`tests/test_prose_clauses.py` enforces both.** It inverts every clause individually and
+asserts that clause's own check reports it — because a five-clause check passes its
+single-mutation test if any one clause fires, leaving the other four free to match incidental
+text. Adding it found two more instances immediately: `L28`'s default clause alternated across
+two statements of the same rule, so inverting one left the other matching, and its off-switch
+clause matched an incidental second mention of `telemetry: off`. Add a probe there for every
+new prose check.
 
 ## Where things live
 

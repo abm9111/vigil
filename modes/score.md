@@ -65,7 +65,7 @@ VIGIL: INCOMPLETE — 1 of 6 clusters had no evidence (security: bandit, semgrep
 ### Expanded (with --verbose or standalone invocation)
 
 ```
-VIGIL score — {project} @ {commit_short}
+VIGIL score — {project} @ {subject}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SEC     65/100  D  ▼  (22%) ████████████░░░░░░░░
 CODE    85/100  B  →  (10%) █████████████████░░░

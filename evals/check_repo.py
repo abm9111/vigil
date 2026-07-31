@@ -44,6 +44,7 @@ Checks:
   L30 preflight requires a tool to resolve inside the subject's environment
   L31 Rule 3 requires demonstrated efficacy before a control reduces severity
   L32 Rule 1 says a scanner hit is a pointer to a question, not an answer
+  L33 Rule 10a requires every report to name the tree it audited
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -905,13 +906,20 @@ CONSENT_CLAUSES: list[tuple[str, str]] = [
     # `[y] yes (default — nothing leaves this machine)`. The check passed while the guarantee
     # was inverted, and its own mutation test passed for an unrelated reason. A loose
     # alternative in a prose check is the same defect as a porous evidence gate (lessons/0005).
-    ("sharing defaults to no", r"default is no\b|\[n\][^\n]*\bdefault"),
+    # Split, not alternated. These are TWO places the same guarantee is stated, and an
+    # alternation let one be inverted while the other kept the check green — instance four of
+    # the loose-alternative defect, found by tests/test_prose_clauses.py. Requiring both also
+    # catches the doc contradicting itself.
+    ("the prose states that sharing defaults to no", r"default is no\b"),
+    ("the option list marks [n] as the default", r"\[n\][^\n]*\bdefault"),
     ("silence is not consent", r"enter must select it|enter selects no|says nothing, nothing"),
     ("non-interactive is not consent", r"non-interactive means no\b"),
     ("a decline is honoured", r"is not asked\s*\n?again|honour a no|never re-asked"),
     ("the user can see the exact record", r"prints the record in full|show me exactly"),
     ("VIGIL does not transmit", r"does not transmit|no endpoint|never transmitted"),
-    ("there is an off switch", r"telemetry:\s*off"),
+    # `telemetry:\s*off` matched a second, incidental mention elsewhere in the file, so the
+    # clause survived the disabling sentence being removed. Key on what the rule *does*.
+    ("there is an off switch that disables record writing", r"disables record writing"),
 ]
 
 
@@ -1118,6 +1126,53 @@ def check_hit_is_a_pointer(r: Report) -> None:
                           "scanner pointed at (lessons/0009)")
 
 
+SUBJECT_CLAUSES: list[tuple[str, str]] = [
+    ("a bare commit SHA is permitted only when the tree is clean",
+     r"only when the tree is\s*\n?clean\*\*"),
+    ("the subject vocabulary distinguishes tree kinds",
+     r"tracked only"),
+    ("a CI gate and a local run are different subjects",
+     r"different subjects"),
+    ("baseline deltas must compare like with like",
+     r"refuse the delta when the kinds differ"),
+    ("secret scans must read ignored paths",
+     r"read ignored paths too"),
+]
+
+
+def check_subject_named(r: Report) -> None:
+    """L33 — Rule 10a must require every report to name the tree it audited.
+
+    `lessons/0010`: a report headed `{project} @ {sha}` while auditing a working tree ~1,900
+    lines ahead of that commit. The format had no way to say "working tree", so the header was
+    structurally incapable of being true — and the same repository gave a secret count of 32,
+    1 and 0 depending on which tree was scanned, all three correct.
+
+    Also enforces that the mode templates stopped hard-coding a bare SHA, because a rule that
+    the output format contradicts is a rule nobody can follow.
+    """
+    rules = ROOT / "RULES.md"
+    if not rules.exists():
+        r.fail("L33", "RULES.md is missing")
+        return
+    text = rules.read_text(encoding="utf-8")
+    for guarantee, pattern in SUBJECT_CLAUSES:
+        if not re.search(pattern, text, re.I):
+            r.fail("L33", f"RULES.md no longer states that {guarantee} — Rule 10a exists "
+                          "because a report named a commit it was not auditing "
+                          "(lessons/0010)")
+
+    for name in ("audit", "scan", "score"):
+        mode = ROOT / "modes" / f"{name}.md"
+        if not mode.exists():
+            continue
+        header = mode.read_text(encoding="utf-8")
+        if re.search(r"@ \{commit_short\}", header):
+            r.fail("L33", f"modes/{name}.md still headers reports with a bare "
+                          "{commit_short} — the format cannot express a dirty tree, which is "
+                          "the defect lessons/0010 records")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -1155,6 +1210,7 @@ def main() -> int:
     check_tool_resolution(r)
     check_control_efficacy(r)
     check_hit_is_a_pointer(r)
+    check_subject_named(r)
     return r.emit()
 
 

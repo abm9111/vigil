@@ -66,12 +66,14 @@ Per [engines/scoring.md](../engines/scoring.md):
 ## Output Template
 
 ```
-VIGIL audit — {project} @ {commit_short} ({date})
+VIGIL audit — {project} @ {subject} ({date})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Stack: {detected_stack}
 Clusters: {N} audited, {M} N/A, {K} N/E (no evidence)
 
 ━━━ Preflight ━━━
+Subject   {clean sha | sha +dirty (N files, M lines) | sha (tracked only) | working tree}
+          per RULES.md Rule 10a — a bare SHA only when the tree is clean
 Tools     {tool} {version} ✓ ...
           {tool} ✗ MISSING ({required|optional}: {cluster}) → {install_cmd}
 Coverage  {cluster}  {n}/{m} required   ceiling {100|85|N/E}

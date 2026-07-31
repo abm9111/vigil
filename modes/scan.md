@@ -65,7 +65,7 @@ Per [engines/scoring.md](../engines/scoring.md), compute scores for scanned clus
 ## Output Template
 
 ```
-VIGIL scan — {project} @ {commit_short} ({date})
+VIGIL scan — {project} @ {subject} ({date})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Stack: {detected_stack}
 

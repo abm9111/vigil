@@ -218,6 +218,44 @@ file, match by count — 2 in the baseline and 3 now is one new finding, not 2 f
 baseline written without these fields can only be matched on path plus rule; say so in the
 report rather than guessing.
 
+### Rule 10a: Name the tree that was audited
+
+A finding is relative to a tree, and the same repository gives different correct answers
+depending on which one you scanned. One real audit measured a secret count of **32 over the
+working tree, 1 over history, and 0 over the tracked tree** — all three correct, all three
+answering different questions (`lessons/0010`).
+
+That report was headed `{project} @ {sha}` while auditing a working tree roughly 1,900 lines
+ahead of that commit. The header was not merely inaccurate; the format had no way to express
+"working tree", so it was **structurally incapable of being true**.
+
+**Every report names its subject**, and a bare commit SHA is permitted **only when the tree is
+clean**:
+
+| Subject | Means |
+|---|---|
+| `abc1234` | clean tree at that commit — the only case a bare SHA may appear |
+| `abc1234 +dirty` | that commit plus uncommitted changes; state the file and line delta |
+| `abc1234 (tracked only)` | tracked files at that commit, i.e. what CI receives |
+| `working tree` | no commit basis established |
+
+Two consequences worth stating, because both have already bitten:
+
+- **A CI gate and a local run are different subjects.** `actions/checkout` delivers the tracked
+  tree; a local run sees untracked files too. A gate verified locally is not the same claim as
+  a gate verified on what CI receives, and the difference is invisible in the output of both.
+- **Rule 10 deltas must compare like with like.** A baseline recorded against one tree kind and
+  compared against another attributes uncommitted work to a code change — the same "score moved
+  for a non-code reason" failure that `engines/scoring.md` already fences for tool versions, on
+  a dimension it does not yet fence. Record the subject in `.vigil/baseline.json` beside the
+  tool versions, and refuse the delta when the kinds differ.
+
+**And scans must run ignore-agnostic.** Adding a directory to `.gitignore` removed a live
+credential inside it from `rg`'s field of view; a recursive grep came back empty and nearly
+reported clean, while a direct read found three occurrences. Hardening the repository shrank
+the scanner's coverage silently, so remediation and detection moved in opposite directions.
+Secret and PII scans read ignored paths too, or they measure the wrong tree.
+
 ## Rationalizations to Reject
 
 When you find a potential issue, your instinct will be to explain it away. Reject these rationalizations:

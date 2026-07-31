@@ -214,7 +214,7 @@ finding", and the report format requires the second.
 
 ## D9 — The audited tree is never named
 
-**Status:** open · **Raised by:** [`lessons/0010`](../lessons/0010-which-tree-was-audited.md)
+**Status:** MECHANIZED 2026-07-31 as `L33` (Rule 10a) + `tree_state` in the record · **Raised by:** [`lessons/0010`](../lessons/0010-which-tree-was-audited.md)
 
 `modes/*.md` head every report `{project} @ {commit_short}`, and `RULES.md` Rule 5 governs which
 directories to skip — but nothing establishes *which tree* is the subject. Working tree,
@@ -242,7 +242,7 @@ differs from that commit, and the egress cluster's scans are ignore-agnostic by 
 
 ## Checks that would catch the classes above
 
-`evals/check_repo.py` runs 32 structural checks. Every one was added after a real gap got past
+`evals/check_repo.py` runs 33 structural checks. Every one was added after a real gap got past
 the previous set. Known remaining blind spots, from Kimi's M11:
 
 | Class | Caught? | Note |

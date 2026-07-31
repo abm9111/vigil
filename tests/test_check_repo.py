@@ -165,6 +165,10 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     ("L32", lambda r: edit(r / "RULES.md",
                            "pointer to a question, not an answer to it",
                            "pointer to a question and its answer")),
+    # Inversion: permit the bare SHA unconditionally, which is the pre-0010 behaviour.
+    ("L33", lambda r: edit(r / "RULES.md",
+                           "permitted **only when the tree is\nclean**",
+                           "permitted in all cases")),
     ("L26", lambda r: edit(r / "proof" / "0001-secret-removed-from-tree-still-live-in-history.md",
                            "severity: HIGH", "severity: SEVERE")),
     ("L28", flip_share_default),

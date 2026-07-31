@@ -6,8 +6,8 @@ missed_by: author, RULES.md Rule 5, modes/audit.md output template
 found_detail: a CI job failed on a path that exists locally but is not tracked; a pre-push gate refused a commit that had swept in untracked files
 missed_detail: the report header named a commit; the audit had been run against a working tree far ahead of it, and nothing in the format made that expressible
 class: a finding is relative to a tree, and the tree is never named
-status: open
-check:
+status: mechanized
+check: L33
 ---
 
 # An audit report was headed with a commit SHA; it had audited neither that commit nor anything equal to it

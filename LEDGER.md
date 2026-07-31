@@ -7,7 +7,7 @@ Where VIGIL's improvements actually came from. Every row is backed by a committe
 lesson in [`lessons/`](lessons/README.md) recording something VIGIL, or its own
 self-audit, got **wrong**.
 
-**7 of 10 classes mechanized** · 10 lessons · 2 open · 1 judged unmechanizable
+**8 of 10 classes mechanized** · 10 lessons · 1 open · 1 judged unmechanizable
 
 ## Contributors
 
@@ -16,8 +16,8 @@ one shape is one class — the metric is deliberately hard to inflate.
 
 | Contributor | Classes | Lessons | Mechanized |
 |---|---|---|---|
-| Author / implementer | **5** | 5 | 4 |
-| ci | **2** | 2 | 1 |
+| Author / implementer | **5** | 5 | 5 |
+| ci | **2** | 2 | 2 |
 | Grok (cross-model review) | **2** | 2 | 1 |
 | Kimi (cross-model review) | **2** | 2 | 1 |
 | The audited model itself | **1** | 1 | 1 |
@@ -46,7 +46,7 @@ human reading carefully and one found by an automated check are very different s
 | a benchmark the model can read is not a benchmark | ✅ `L12 (answer-key location), run_eval.py hard refusal` | [A fixture scored 0 false positives while the answer key sat inside the audited directory](lessons/0002-contaminated-measurement.md) |
 | a checker only checks what someone thought to check | ✅ `L7, L8` | [The self-audit reported CLEAN while five real inconsistencies sat in the repo](lessons/0001-checker-clean-over-real-gaps.md) |
 | a control's presence is not its efficacy — reading is not running | ✅ `L31` | [A rate limiter was credited as a compensating control; it had never blocked a single request](lessons/0008-control-present-not-effective.md) |
-| a finding is relative to a tree, and the tree is never named | ⏳ | [An audit report was headed with a commit SHA; it had audited neither that commit nor anything equal to it](lessons/0010-which-tree-was-audited.md) |
+| a finding is relative to a tree, and the tree is never named | ✅ `L33` | [An audit report was headed with a commit SHA; it had audited neither that commit nor anything equal to it](lessons/0010-which-tree-was-audited.md) |
 | a measurement instrument that fails in both directions | ⏳ | [The eval reported 100% recall for an audit containing no analysis — twice, after two fixes](lessons/0005-metric-that-flatters.md) |
 | a scanner hit is a pointer to a question, not an answer to it | ✅ `L32` | [Two findings were reported from scanner output; both files already answered the scanner](lessons/0009-scanner-hit-is-a-pointer.md) |
 | an instrument resolved outside the subject's environment fails silently clean | ✅ `L30` | [A type checker reported a codebase clean because it could not import the codebase's dependencies](lessons/0007-instrument-outside-the-subject.md) |
