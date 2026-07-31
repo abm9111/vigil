@@ -26,7 +26,13 @@ All of it runs offline and without an API key. CI runs the same commands, so a g
 run means a green pipeline.
 
 **`evals/run_eval.py` is the exception** — it invokes the Claude CLI and costs money per run.
-Never call it without `--from-file`. The same applies to `check_loadable.py --live`.
+Never call it without `--from-file`. The same applies to `check_loadable.py --live`, and
+doubly to `run_eval.py --baseline`, which runs two arms per fixture.
+
+The baseline arm answers the question every other number here depends on — *does the skill beat
+a competent prompt?* — and it is allowed to come back negative. If it does, that is a result
+about VIGIL. **Strengthening `evals/baseline-prompt.md` is always allowed; weakening it to
+improve the delta is gaming the benchmark.**
 
 ## Four rules that are not negotiable
 

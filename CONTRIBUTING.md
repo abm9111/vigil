@@ -71,6 +71,15 @@ All of the above runs in CI. None of it needs an API key.
 `evals/run_eval.py` is **not** run in CI: it invokes the Claude Code CLI and costs money per
 run. Score a saved transcript with `--from-file` if you need to exercise it.
 
+```bash
+python3 evals/run_eval.py --baseline --runs 3     # 2 arms per fixture — real spend
+```
+
+This is the one measurement that anchors all the others: the same fixtures and the same scorer,
+run with VIGIL and with no skills discoverable at all. See **D5** in
+[`docs/OPEN-DESIGN.md`](docs/OPEN-DESIGN.md). It is allowed to come back negative, and a
+fixture where VIGIL did not win belongs in `evals/results/` like any other result.
+
 ### Two conventions worth knowing
 
 **When a gap gets past the checks, add a check — not just a patch.** The patch fixes one

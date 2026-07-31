@@ -102,6 +102,45 @@ It needs an argument, recorded, not a quiet edit.
 
 ---
 
+## D5 — Does the skill beat its own absence?
+
+**Status:** measurable since 2026-07-31, **not yet measured** · **Raised by:** a survey of
+comparable repos
+
+Every recall number this project has published was unanchored. The harness scored VIGIL
+against fixtures and reported 80%, but nothing established what a bare model scores on the same
+fixtures with a competent prompt. If the answer is also 80%, the eleven cluster files, the
+correlation engine and the scoring model are decoration, and the honest move is to delete most
+of it.
+
+That is not a hypothetical objection. `levnikolaevich/claude-code-skills` argues explicitly
+that modern Claude and Codex models work better with concise procedural guidance and ships 52
+files where this repo has well over a hundred. That claim has never been tested here, and
+dismissing it because this repo is more thorough would be assuming the conclusion.
+
+**Now runnable:**
+
+```bash
+python3 evals/run_eval.py --baseline --runs 3
+```
+
+Two arms over the same fixtures with the same scorer: VIGIL, and a control with no skills
+discoverable, given the deliberately strong prompt in
+[`../evals/baseline-prompt.md`](../evals/baseline-prompt.md). The harness proves the control
+cannot see the skill before trusting a single control number — otherwise both arms are the
+treatment arm, the delta collapses to zero, and the plausible-looking conclusion is "VIGIL adds
+nothing."
+
+It is a measurement, not a gate: it always exits 0. Wiring it to an exit code would create
+pressure to weaken the control on a red build, which is the threshold-lowering move `L12`
+exists to prevent.
+
+**Done when:** the numbers exist in `evals/results/`, including any fixture where VIGIL did not
+win. A null result is the most valuable output this can produce and the easiest to quietly not
+publish.
+
+---
+
 ## Checks that would catch the classes above
 
 `evals/check_repo.py` runs 28 structural checks. Every one was added after a real gap got past

@@ -29,9 +29,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -392,6 +394,119 @@ def run_vigil(fixture: Path, model: str | None) -> str:
     return r.stdout + r.stderr
 
 
+BASELINE_PROMPT_FILE = ROOT / "baseline-prompt.md"
+
+
+def control_prompt() -> str:
+    """The without-VIGIL prompt, read from its own file so it can be reviewed and argued with.
+
+    Kept out of this module deliberately: a benchmark's result is decided by its control, and a
+    control buried in code is one nobody audits. See baseline-prompt.md for why it is
+    deliberately strong.
+    """
+    text = BASELINE_PROMPT_FILE.read_text(encoding="utf-8")
+    m = re.search(r"## The prompt\s*\n+```\n(.*?)\n```", text, re.S)
+    if not m:
+        print(f"harness error: no fenced prompt under '## The prompt' in "
+              f"{BASELINE_PROMPT_FILE.name}", file=sys.stderr)
+        sys.exit(2)
+    return m.group(1).strip()
+
+
+def assert_skill_invisible(cfg: Path, model: str | None) -> None:
+    """Prove the control cannot see VIGIL before trusting a single control number.
+
+    Without this the harness has a silent, catastrophic failure mode: if the control inherits a
+    config where the skill is discoverable, both arms are really the treatment arm, the delta
+    collapses to roughly zero, and the honest-looking conclusion is "VIGIL adds nothing."
+
+    A benchmark that can quietly measure the wrong thing and still print a plausible number is
+    the shape of lessons/0002. So this is a hard gate, not a warning.
+    """
+    cmd = ["claude", "-p", "List the names of every skill available to you. "
+                           "Output names only, one per line, nothing else."]
+    if model:
+        cmd += ["--model", model]
+    r = subprocess.run(
+        cmd, capture_output=True, text=True, timeout=300, check=False,
+        env={**os.environ, "CLAUDE_CONFIG_DIR": str(cfg)},
+    )
+    if r.returncode != 0:
+        print(f"harness error: control probe exited {r.returncode}: {r.stderr[-400:]}",
+              file=sys.stderr)
+        sys.exit(2)
+    if "vigil" in r.stdout.lower():
+        print("harness error: the control arm can still see the VIGIL skill, so both arms "
+              "would be the treatment arm and the delta would be meaningless.\n"
+              f"  probe returned: {r.stdout.strip()[:200]!r}", file=sys.stderr)
+        sys.exit(2)
+
+
+def run_control(fixture: Path, model: str | None, cfg: Path) -> str:
+    """Run the fixture with no skills discoverable — the without-VIGIL arm."""
+    cmd = ["claude", "-p", control_prompt(), "--allowedTools", "Bash,Read,Glob,Grep"]
+    if model:
+        cmd += ["--model", model]
+    try:
+        r = subprocess.run(
+            cmd, cwd=fixture, capture_output=True, text=True, timeout=900, check=False,
+            env={**os.environ, "CLAUDE_CONFIG_DIR": str(cfg)},
+        )
+    except subprocess.TimeoutExpired:
+        print(f"harness error: control timed out on {fixture.name}", file=sys.stderr)
+        sys.exit(2)
+    if r.returncode != 0:
+        print(f"harness error: control exited {r.returncode} on {fixture.name}\n"
+              f"{r.stderr[-600:]}", file=sys.stderr)
+        sys.exit(2)
+    return r.stdout + r.stderr
+
+
+def median(xs: list[float]) -> float:
+    s = sorted(xs)
+    n = len(s)
+    return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+
+
+def report_delta(name: str, control: list[Result], vigil: list[Result]) -> bool:
+    """Print the comparison. Returns True if VIGIL beat the control on this fixture.
+
+    Reports a range as well as a median because a single run is a sample of size one, and
+    min_recall has always been enforced against a number whose spread nobody measured.
+    """
+    def line(label: str, results: list[Result]) -> str:
+        rec = [r.recall for r in results]
+        fps = [float(len(r.false_positives)) for r in results]
+        span = (f"  (min {min(rec):.0%} max {max(rec):.0%})" if len(rec) > 1 else "")
+        return (f"   {label:<10} recall {median(rec):>4.0%}{span}"
+                f"   false positives {median(fps):>3.0f}")
+
+    c_rec, v_rec = median([r.recall for r in control]), median([r.recall for r in vigil])
+    c_fp = median([float(len(r.false_positives)) for r in control])
+    v_fp = median([float(len(r.false_positives)) for r in vigil])
+
+    print(f"\n── {name}   ({len(control)} run(s) per arm)")
+    print(line("control", control))
+    print(line("vigil", vigil))
+    print(f"   {'delta':<10} recall {v_rec - c_rec:+.0%}"
+          f"                       false positives {v_fp - c_fp:+.0f}")
+
+    # Recall alone is not an improvement. A skill that finds more by inventing more has moved
+    # nothing, so a strictly worse false-positive count cancels a recall gain.
+    better = v_rec > c_rec and v_fp <= c_fp
+    if better:
+        print("   → VIGIL found more without inventing more")
+    elif v_rec > c_rec:
+        print(f"   → recall improved but false positives rose ({c_fp:.0f} → {v_fp:.0f}); "
+              "that is not an improvement")
+    elif v_rec == c_rec and v_fp < c_fp:
+        print("   → same recall, fewer false positives")
+    else:
+        print("   → NO IMPROVEMENT over a competent prompt on this fixture. "
+              "Record it; do not weaken the control.")
+    return better
+
+
 def report(name: str, res: Result) -> None:
     mark = "PASS" if res.passed else "FAIL"
     print(f"\n── {name}  [{mark}]")
@@ -407,12 +522,63 @@ def report(name: str, res: Result) -> None:
         print(f"   DEFLATED        {d}")
 
 
+def run_baseline(names: list[str], model: str | None, runs: int) -> int:
+    """Two arms, same fixtures, same scorer. Answers: does the skill beat its absence?
+
+    Every recall number this harness has ever produced was unanchored — for all it knew, a bare
+    model found the same defects and the skill changed nothing. This is the measurement that
+    settles it, and it is allowed to come back negative.
+    """
+    total = len(names) * runs * 2
+    print(f"Baseline comparison: {len(names)} fixture(s) x {runs} run(s) x 2 arms "
+          f"= {total} CLI invocations. This costs real money and is never run in CI.\n")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        cfg = Path(tmp) / "empty-config"
+        (cfg / "skills").mkdir(parents=True)
+        assert_skill_invisible(cfg, model)
+        print("control arm confirmed skill-free\n")
+
+        improved: list[str] = []
+        for name in names:
+            fx = FIXTURES / name
+            expected = json.loads((EXPECTED / f"{name}.json").read_text(encoding="utf-8"))
+            control = [score(expected, parse_findings(run_control(fx, model, cfg)))
+                       for _ in range(runs)]
+            vigil = [score(expected, parse_findings(run_vigil(fx, model)))
+                     for _ in range(runs)]
+            if report_delta(name, control, vigil):
+                improved.append(name)
+
+    print(f"\nVIGIL beat the control on {len(improved)}/{len(names)} fixture(s).")
+    if len(improved) < len(names):
+        print("Fixtures with no improvement are a result about VIGIL, not a harness failure. "
+              "Strengthening the control is allowed; weakening it is not.")
+    # Deliberately always 0. This is a measurement, not a gate — wiring it to an exit code
+    # would create pressure to weaken the control on a red build, which is precisely the
+    # threshold-lowering failure L12 exists to prevent.
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--fixture", help="run a single fixture by directory name")
     ap.add_argument("--from-file", help="score a saved transcript instead of invoking claude")
     ap.add_argument("--model", help="model override passed to claude -p")
+    ap.add_argument("--baseline", action="store_true",
+                    help="also run a without-VIGIL control arm and print the delta "
+                         "(doubles the API cost — see evals/baseline-prompt.md)")
+    ap.add_argument("--runs", type=int, default=1, metavar="N",
+                    help="runs per arm; >1 reports a range as well as a median")
     args = ap.parse_args()
+
+    if args.runs < 1:
+        print("harness error: --runs must be at least 1", file=sys.stderr)
+        return 2
+    if args.baseline and args.from_file:
+        print("harness error: --baseline invokes the CLI twice per run and cannot score a "
+              "saved transcript", file=sys.stderr)
+        return 2
 
     if not FIXTURES.is_dir() or not EXPECTED.is_dir():
         print(f"harness error: expected {FIXTURES} and {EXPECTED}", file=sys.stderr)
@@ -428,6 +594,9 @@ def main() -> int:
     if args.from_file and len(names) != 1:
         print("harness error: --from-file requires exactly one --fixture", file=sys.stderr)
         return 2
+
+    if args.baseline:
+        return run_baseline(names, args.model, args.runs)
 
     ok = True
     for name in names:
