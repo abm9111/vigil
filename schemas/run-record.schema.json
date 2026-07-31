@@ -31,6 +31,10 @@
                  "redis", "github-actions", "gitlab-ci", "other"]
       }
     },
+    "tree_state": {
+      "description": "WHICH TREE THIS RECORD IS ABOUT. lessons/0010: a finding is relative to a tree, and nothing forces you to say which one. The same repository gives different correct answers depending on whether you scan the working tree, the tracked tree or history — one real audit measured 32 / 0 / 1 secrets across the three. A record that does not say cannot be aggregated with one that does, so like `shared` this has no default and privacy_gate refuses to bundle a record lacking it. Not required in the record: a run may legitimately not know, and a record that admits ignorance is better than one that guesses.",
+      "enum": ["clean", "dirty", "detached", "tracked-only", "unknown"]
+    },
     "repo_size_bucket": { "enum": ["tiny", "small", "medium", "large", "huge"] },
     "duration_bucket": {
       "enum": ["under-1min", "1-5min", "5-10min", "10-30min", "over-30min"]

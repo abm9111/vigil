@@ -42,6 +42,14 @@ and the schema is the bug.
 
 Per run: mode, VIGIL version, detected stack (as a bounded enum), size and duration **buckets**.
 
+**And `tree_state` — which tree was actually audited.** `lessons/0010` records a report headed
+with a commit SHA while auditing a working tree ~1,900 lines ahead of it. The same repository
+gave three different correct answers to one question — a secret scan found **32** over the
+working tree, **1** over history and **0** over the tracked tree. A record that does not say
+which of those it measured cannot be pooled with one that does, so the privacy gate refuses to
+bundle a record without it. `"unknown"` is permitted and is the honest answer when the run
+cannot tell; a record that admits ignorance is worth more than one that guesses.
+
 Per cluster: its prefix, one of three verdicts, and counts.
 
 | Verdict | Meaning |

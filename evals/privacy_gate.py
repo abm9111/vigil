@@ -200,6 +200,17 @@ def check_bundle(path: Path, bundle_schema: dict[str, Any],
                     "asked and said yes may be contributed. An absent value means the run never "
                     "put the question, which is not consent."
                 )
+            # lessons/0010: a record that does not name the tree it audited cannot be pooled
+            # with one that does. Working-tree, tracked-tree and history scans give different
+            # correct answers to the same question, so mixing them silently averages
+            # incomparable measurements — the corpus equivalent of the report header that was
+            # structurally incapable of being true.
+            if isinstance(record, dict) and "tree_state" not in record:
+                errs.append(
+                    f"{path.name}.records[{i}]: no tree_state — the record does not say which "
+                    "tree was audited, so it cannot be aggregated with records that do. "
+                    "'unknown' is a permitted and honest answer."
+                )
     errs += scan_leaks(raw)
     return errs
 

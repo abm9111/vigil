@@ -324,6 +324,23 @@ def corpus_report(by_contributor: dict[str, list[dict[str, Any]]]) -> list[str]:
         a(f"⚠️  Corpus mixes VIGIL versions {sorted(versions)}. A rule that changed between "
           "them makes the pooled rate meaningless for that cluster.")
         a("")
+
+    # lessons/0010 — the confound that looks like nothing. A dirty-tree audit sees untracked
+    # files no CI run will ever have; a tracked-only scan sees none of them. Pooling the two
+    # averages answers to different questions, and the result looks perfectly well-formed.
+    trees = Counter(rec.get("tree_state", "unstated")
+                    for recs in by_contributor.values() for rec in recs)
+    a("## Tree state")
+    a("")
+    for state, n in trees.most_common():
+        a(f"- `{state}` in {n} run(s)")
+    a("")
+    if len({t for t in trees if t != "unknown"}) > 1:
+        a("⚠️  Corpus mixes tree states. A working-tree audit and a tracked-tree audit answer "
+          "different questions — one real run measured 32 secrets over the working tree, 0 "
+          "over the tracked tree and 1 over history, all correct. Read every rate above as "
+          "conditioned on this mix.")
+        a("")
     return out
 
 

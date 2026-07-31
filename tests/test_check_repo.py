@@ -179,6 +179,7 @@ def test_l27_regates_a_corpus_bundle(repo: Path) -> None:
             "schema_version": 1, "vigil_version": "0.4.0", "mode": "audit",
             "clusters": [{"prefix": "SEC", "verdict": "scored"}],
             "shared": "asked-accepted",
+            "tree_state": "clean",
         }],
     }
     (corpus / "someone.json").write_text(json.dumps(clean), encoding="utf-8")

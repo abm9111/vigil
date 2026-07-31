@@ -59,6 +59,7 @@ def clean_record() -> dict[str, Any]:
         "cap_reason": "critical",
         "transmitted": False,
         "shared": "asked-accepted",
+        "tree_state": "clean",
         "outcomes": [
             {"prefix": "SEC", "severity": "high", "disposition": "accepted", "tool": "gitleaks"},
         ],
@@ -218,3 +219,41 @@ def test_bundle_with_no_records_is_rejected(
 ) -> None:
     p = write_bundle(tmp_path, {"schema_version": 1, "contributor": "dev0", "records": []})
     assert check_bundle(p, bundle_schema, schema)
+
+
+def test_a_record_that_never_asked_cannot_be_bundled(
+    tmp_path: Path, bundle_schema: dict[str, Any], schema: dict[str, Any]
+) -> None:
+    """CONSENT IS STRUCTURAL. `shared` has no default, so a run that never put the question
+    produces a record that cannot answer it — and therefore cannot be contributed.
+
+    This is the case a policy would have missed: the first real run wrote a record, disclosed
+    it to the user, gitignored it, and never asked. Every instruction was followed except the
+    one that mattered, and L28 cannot detect that because it reads documentation, not runs.
+    """
+    rec = clean_record()
+    del rec["shared"]
+    p = write_bundle(tmp_path, {"schema_version": 1, "contributor": "dev0", "records": [rec]})
+    assert any("not consent" in e for e in check_bundle(p, bundle_schema, schema))
+
+
+def test_a_record_that_does_not_name_its_tree_cannot_be_bundled(
+    tmp_path: Path, bundle_schema: dict[str, Any], schema: dict[str, Any]
+) -> None:
+    """lessons/0010 — pooling a working-tree audit with a tracked-tree audit averages answers
+    to different questions, and the result looks perfectly well-formed."""
+    rec = clean_record()
+    del rec["tree_state"]
+    p = write_bundle(tmp_path, {"schema_version": 1, "contributor": "dev0", "records": [rec]})
+    assert any("tree_state" in e for e in check_bundle(p, bundle_schema, schema))
+
+
+def test_unknown_is_an_acceptable_tree_state(
+    tmp_path: Path, bundle_schema: dict[str, Any], schema: dict[str, Any]
+) -> None:
+    """A gate that only accepts certainty pressures runs into guessing. Admitting ignorance
+    must be cheaper than fabricating a value."""
+    rec = clean_record()
+    rec["tree_state"] = "unknown"
+    p = write_bundle(tmp_path, {"schema_version": 1, "contributor": "dev0", "records": [rec]})
+    assert check_bundle(p, bundle_schema, schema) == []

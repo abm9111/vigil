@@ -48,6 +48,7 @@ def record(*, egress_ne: bool = False, fp: int = 0, outcomes: int = 4,
         ],
         "partial_score": 70,
         "shared": "asked-accepted",
+        "tree_state": "clean",
         "outcomes": [
             {"prefix": "CODE", "severity": "low",
              "disposition": "false_positive" if i < fp else "accepted", "tool": "ruff"}
