@@ -15,7 +15,7 @@ of the self-audit exists to catch exactly that.
 ## Before you finish any change
 
 ```bash
-python3 evals/check_repo.py       # 31 structural checks · <1s · no LLM, no network
+python3 evals/check_repo.py       # 32 structural checks · <1s · no LLM, no network
 python3 evals/check_loadable.py   # the skill is still discoverable
 pytest tests/ -q                  # every check must be able to FAIL
 mypy && ruff check .              # config in pyproject.toml
@@ -61,6 +61,30 @@ so it is unrepresentable rather than redacted. One `{"type": "string"}` added to
 the tool version" reopens the whole surface while every existing test still passes. `L25`
 refuses it — if you find yourself wanting to disable that check, the design has changed and
 that is a conversation, not a commit.
+
+## Mutating a prose check
+
+Several checks (`L28`, `L30`, `L31`, `L32`) assert that a rule is still *stated* in a Markdown file,
+because the thing they guard is executed by a model reading that file — there is no function to
+unit-test. This family does real work and has one specific failure mode:
+
+**A loose alternative in the pattern fails silently, toward green.** Three instances so far:
+`L28` matched a bare `default —` that survived the default being flipped to *yes*; `L30`
+assumed a plain line break in a clause that wraps inside a blockquote; `L31` had `**no**` as an
+alternative, which matched an unrelated bolded "no" and stayed green after *not sufficient* was
+inverted to *sufficient*. In every case the check reported the rule intact while the rule said
+the opposite.
+
+Two rules follow, and they are cheap:
+
+**Key every alternative to text that changes when the meaning changes.** `default is no`
+inverts to `default is yes` and the pattern fails, which is what you want. `default —` survives
+the inversion, so it guards nothing.
+
+**Mutate by inverting the rule, never by deleting it.** A deletion test only proves the pattern
+needs its text present. An inversion proves it keys on the part carrying the meaning — and it
+is also the realistic erosion, since nobody deletes a safety rule, they soften it. Converting
+`L30` and `L31` from deletions to inversions immediately exposed the `L31` pattern above.
 
 ## Where things live
 

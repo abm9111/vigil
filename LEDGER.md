@@ -7,7 +7,7 @@ Where VIGIL's improvements actually came from. Every row is backed by a committe
 lesson in [`lessons/`](lessons/README.md) recording something VIGIL, or its own
 self-audit, got **wrong**.
 
-**6 of 10 classes mechanized** · 10 lessons · 3 open · 1 judged unmechanizable
+**7 of 10 classes mechanized** · 10 lessons · 2 open · 1 judged unmechanizable
 
 ## Contributors
 
@@ -16,7 +16,7 @@ one shape is one class — the metric is deliberately hard to inflate.
 
 | Contributor | Classes | Lessons | Mechanized |
 |---|---|---|---|
-| Author / implementer | **5** | 5 | 3 |
+| Author / implementer | **5** | 5 | 4 |
 | ci | **2** | 2 | 1 |
 | Grok (cross-model review) | **2** | 2 | 1 |
 | Kimi (cross-model review) | **2** | 2 | 1 |
@@ -48,7 +48,7 @@ human reading carefully and one found by an automated check are very different s
 | a control's presence is not its efficacy — reading is not running | ✅ `L31` | [A rate limiter was credited as a compensating control; it had never blocked a single request](lessons/0008-control-present-not-effective.md) |
 | a finding is relative to a tree, and the tree is never named | ⏳ | [An audit report was headed with a commit SHA; it had audited neither that commit nor anything equal to it](lessons/0010-which-tree-was-audited.md) |
 | a measurement instrument that fails in both directions | ⏳ | [The eval reported 100% recall for an audit containing no analysis — twice, after two fixes](lessons/0005-metric-that-flatters.md) |
-| a scanner hit is a pointer to a question, not an answer to it | ⏳ | [Two findings were reported from scanner output; both files already answered the scanner](lessons/0009-scanner-hit-is-a-pointer.md) |
+| a scanner hit is a pointer to a question, not an answer to it | ✅ `L32` | [Two findings were reported from scanner output; both files already answered the scanner](lessons/0009-scanner-hit-is-a-pointer.md) |
 | an instrument resolved outside the subject's environment fails silently clean | ✅ `L30` | [A type checker reported a codebase clean because it could not import the codebase's dependencies](lessons/0007-instrument-outside-the-subject.md) |
 | an unchecked claim wearing the words of a checked one | 🚫 | [A write-up said "each was manually verified" — one of them had not been](lessons/0003-unverified-verification.md) |
 | contributed material carries the contributor's real system | ✅ `L19` | [The skill's own docs shipped a live business's domains, compliance posture and architecture](lessons/0006-context-file-is-an-attack-map.md) |

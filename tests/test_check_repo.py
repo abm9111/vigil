@@ -148,13 +148,23 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     # privacy gate — which is exactly what happened before L29 existed.
     ("L29", lambda r: edit(r / "schemas" / "run-record.schema.json",
                            '"SEC", "CODE",', '"CODE",')),
-    # The realistic erosion: someone trims the "sounds paranoid" clause. It is one bullet.
-    ("L30", lambda r: strip_lines(r / "engines" / "preflight.md",
-                                  "cannot contribute to a ceiling of 100")),
-    # The realistic erosion: someone "simplifies" Rule 3a back to the original wording,
-    # which reads as tidying and silently restores the defect lessons/0008 records.
-    ("L31", lambda r: strip_lines(r / "RULES.md",
-                                  "presence is not its efficacy", "demonstrated efficacy")),
+    # INVERT, don't delete — see "Mutating a prose check" in AGENTS.md. A deletion proves
+    # only that the pattern needs its text present; an inversion proves the pattern keys on
+    # the part that carries the meaning. L28 passed a deletion test while the rule said the
+    # opposite of what it was supposed to.
+    ("L30", lambda r: edit(r / "engines" / "preflight.md",
+                           "cannot contribute to a ceiling of 100",
+                           "may still contribute to a ceiling of 100")),
+    # Inversion, not deletion: flip the ladder's verdict for a merely-present control. This
+    # is the realistic erosion — it reads as tidying and silently restores lessons/0008.
+    ("L31", lambda r: edit(r / "RULES.md",
+                           "That is necessary and **not sufficient**",
+                           "That is necessary and sufficient")),
+    # Inversion: the realistic erosion is someone deciding 1a is redundant with Rule 1 and
+    # softening "not an answer" into "and its answer".
+    ("L32", lambda r: edit(r / "RULES.md",
+                           "pointer to a question, not an answer to it",
+                           "pointer to a question and its answer")),
     ("L26", lambda r: edit(r / "proof" / "0001-secret-removed-from-tree-still-live-in-history.md",
                            "severity: HIGH", "severity: SEVERE")),
     ("L28", flip_share_default),

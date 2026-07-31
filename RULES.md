@@ -13,6 +13,44 @@ Every finding MUST cite deterministic evidence. The hierarchy:
 
 A finding with no tool output and no file reference is **not a finding**. Delete it.
 
+### Rule 1a: A scanner hit is a pointer to a question, not an answer to it
+
+Tool output is first in that hierarchy because it is the required **starting** point, never
+because it is a sufficient **ending** point. A hit says *look here*. It does not say *this is
+wrong*.
+
+Both false positives in `lessons/0009` were produced by reporting a hit without opening the
+file it pointed at:
+
+- the flagged lines carried a comment **at those exact lines** naming the mitigation, the
+  sibling config that implements it, the fact that this specific rule fires anyway, and the
+  command to verify it
+- the other call sites had already declared non-security use through the language's own
+  dedicated parameter, and the digests in question were persisted record identifiers — so
+  applying the "fix" would have orphaned stored rows
+
+Neither needed judgement. Both needed opening the file.
+
+**Before a hit becomes a finding, read the flagged location** — the lines themselves and their
+surroundings — and answer three questions:
+
+1. **Is there an in-place justification?** A comment at or near the hit naming the mitigation,
+   the compensating config, or a verification command. Scanners do not read comments.
+2. **Has intent been declared in a way the scanner cannot see?** A language-level parameter
+   (`usedforsecurity=False`), a typed wrapper, a suppression carrying a reason. The absence of
+   a *scanner-visible* declaration is not the absence of a declaration.
+3. **What would the proposed fix break?** Rule 9 requires every finding to carry a fix. A
+   remediation that would orphan stored data, break a persisted identifier or change a wire
+   format is not a fix, and a finding whose only remedy is destructive is not yet complete.
+
+If the answer to 1 or 2 is yes and it holds, the hit is **resolved, not reported** — and say so
+in the coverage notes, because a scanner hit that was investigated and dismissed is information
+the next auditor should not have to rediscover.
+
+This does not license dismissal. It licenses **reading**, and Rule 3's rationalization table
+still applies to whatever you find there: an in-place comment claiming a mitigation is a claim,
+and Rule 3a governs whether its efficacy was demonstrated or merely asserted.
+
 ## Rule 2: Severity Definitions
 
 | Severity | Definition | Response |

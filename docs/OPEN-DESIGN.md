@@ -194,7 +194,7 @@ citing a control with no execution evidence is rejected by the report format.
 
 ## D8 — Tool output alone is treated as sufficient evidence
 
-**Status:** open · **Raised by:** [`lessons/0009`](../lessons/0009-scanner-hit-is-a-pointer.md)
+**Status:** MECHANIZED 2026-07-31 as `L32` (Rule 1a) · **Raised by:** [`lessons/0009`](../lessons/0009-scanner-hit-is-a-pointer.md)
 
 Rule 1 ranks evidence with tool output at the top, which reads as "the highest available tier
 suffices." Scanners are correctly context-free: they report what one artefact says in isolation.
@@ -242,7 +242,7 @@ differs from that commit, and the egress cluster's scans are ignore-agnostic by 
 
 ## Checks that would catch the classes above
 
-`evals/check_repo.py` runs 31 structural checks. Every one was added after a real gap got past
+`evals/check_repo.py` runs 32 structural checks. Every one was added after a real gap got past
 the previous set. Known remaining blind spots, from Kimi's M11:
 
 | Class | Caught? | Note |

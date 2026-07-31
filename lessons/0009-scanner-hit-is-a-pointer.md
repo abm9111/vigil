@@ -6,8 +6,8 @@ missed_by: author, RULES.md Rule 1, RULES.md Rule 3
 found_detail: caught only when the remediation step required opening the flagged files
 missed_detail: Rule 1's evidence hierarchy treats tool output as sufficient on its own
 class: a scanner hit is a pointer to a question, not an answer to it
-status: open
-check:
+status: mechanized
+check: L32
 ---
 
 # Two findings were reported from scanner output; both files already answered the scanner

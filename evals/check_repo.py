@@ -43,6 +43,7 @@ Checks:
   L29 the record schema's cluster vocabulary matches RULES.md
   L30 preflight requires a tool to resolve inside the subject's environment
   L31 Rule 3 requires demonstrated efficacy before a control reduces severity
+  L32 Rule 1 says a scanner hit is a pointer to a question, not an answer
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -1033,8 +1034,15 @@ EFFICACY_CLAUSES: list[tuple[str, str]] = [
      r"presence is not its efficacy|demonstrated efficacy"),
     ("there is an evidence ladder for controls",
      r"Executed|Traced"),
+    # `\*\*no\*\*` was an alternative here and it matched any bolded "no" in the file, so the
+    # clause stayed green after "not sufficient" was inverted to "sufficient". Third instance
+    # of the same defect (L28's `default —`, L30's blockquote wrap): a loose alternative in a
+    # prose check fails silently toward green. Keep every alternative keyed to text that
+    # changes when the rule's meaning changes.
     ("a merely-present control is explicitly insufficient",
-     r"necessary and \*\*not sufficient\*\*|\*\*no\*\*"),
+     r"necessary and \*\*not sufficient\*\*"),
+    ("the ladder denies severity reduction to a merely-present control",
+     r"\*\*Present\*\*[^\n]*\*\*no\*\*"),
     ("the initial-state trap is named",
      r"first[- ]call|initial\*?\*? state|empty"),
     ("undemonstrated efficacy keeps the undiminished severity",
@@ -1065,6 +1073,49 @@ def check_control_efficacy(r: Report) -> None:
             r.fail("L31", f"RULES.md no longer states that {guarantee} — Rule 3a exists "
                           "because Rule 3 as written was satisfied by a control that never "
                           "worked (lessons/0008)")
+
+
+# Every alternative below is keyed to text that changes when the rule's meaning changes —
+# see "Mutating a prose check" in AGENTS.md, and the three times a loose alternative failed
+# silently toward green before that convention was written down.
+POINTER_CLAUSES: list[tuple[str, str]] = [
+    ("a scanner hit is a pointer, not an answer",
+     r"pointer to a question, not an answer"),
+    ("tool output is a starting point, not a sufficient ending point",
+     r"required \*\*starting\*\* point, never\s*\n?because it is a sufficient"),
+    ("the flagged location must be read before reporting",
+     r"read the flagged location"),
+    ("scanners do not read comments",
+     r"Scanners do not read comments"),
+    ("a destructive remediation is not a fix",
+     r"is not a fix, and a finding whose only remedy is destructive"),
+]
+
+
+def check_hit_is_a_pointer(r: Report) -> None:
+    """L32 — Rule 1 must say tool output locates a question rather than settling it.
+
+    `lessons/0009`: two false positives, both produced by reporting a scanner hit without
+    opening the file it pointed at. One flagged location carried a comment on those exact
+    lines naming the mitigation and the command to verify it; the other had intent declared
+    through a language parameter the scanner cannot see, and the proposed fix would have
+    orphaned stored rows.
+
+    The pull here is toward deleting Rule 1a as redundant — Rule 1 already demands evidence,
+    so "read the file" sounds like a restatement. It is the opposite: Rule 1's hierarchy puts
+    tool output *first*, which reads as strongest-and-sufficient. 1a is the fence that keeps
+    first from meaning final.
+    """
+    rules = ROOT / "RULES.md"
+    if not rules.exists():
+        r.fail("L32", "RULES.md is missing")
+        return
+    text = rules.read_text(encoding="utf-8")
+    for guarantee, pattern in POINTER_CLAUSES:
+        if not re.search(pattern, text, re.I):
+            r.fail("L32", f"RULES.md no longer states that {guarantee} — Rule 1a exists "
+                          "because two findings were reported without opening the file the "
+                          "scanner pointed at (lessons/0009)")
 
 
 def main() -> int:
@@ -1103,6 +1154,7 @@ def main() -> int:
     check_schema_prefixes(r)
     check_tool_resolution(r)
     check_control_efficacy(r)
+    check_hit_is_a_pointer(r)
     return r.emit()
 
 
