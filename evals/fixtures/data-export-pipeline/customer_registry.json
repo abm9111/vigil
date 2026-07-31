@@ -1,0 +1,4 @@
+{
+  "884213": {"accountNo": 884213, "legalName": "Meridian Holdings LLC", "contactEmail": "ops@meridian-holdings.example", "contactPhone": "+971500000001", "taxId": "100482913700003", "segment": "S-1001"},
+  "884214": {"accountNo": 884214, "legalName": "Northwind Trading FZE", "contactEmail": "finance@northwind.example", "contactPhone": "+971500000002", "taxId": "100482913700004", "segment": "S-1002"}
+}

@@ -1,0 +1,51 @@
+name: self-audit
+
+# VIGIL's own consistency gate. It runs on every push because the failures it catches are
+# invisible to review: a weight table that disagrees with a cluster header, a compliance
+# citation pointing at nothing, a downgrade rule fenced in one file and unfenced in another.
+# None of those look wrong in a diff; all of them make two auditors compute different scores.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Structural self-audit (16 checks, no LLM, no network)
+        run: python3 evals/check_repo.py
+
+      # The dashboard is generated, so a PR that adds a lesson must regenerate it. L18
+      # covers this inside check_repo too; this step exists to give a clearer failure.
+      - name: Learning dashboard is current
+        run: python3 evals/build_ledger.py --check
+
+      - name: Install dev dependencies
+        run: pip install --quiet pytest mypy ruff
+
+      # Every self-audit check must be able to FAIL. These break one invariant at a time in a
+      # temp copy and assert the matching check fires — the claim "negative-tested" is only
+      # durable if a machine re-checks it.
+      - name: Tests
+        run: pytest tests/ -q
+
+      - name: Type-check the harnesses
+        run: mypy
+
+      # Config is in pyproject.toml, so a contributor running these locally gets the same
+      # verdict CI does. evals/fixtures/ is excluded there — it is deliberately defective
+      # code, which is the point of a fixture.
+      - name: Lint the harnesses
+        run: ruff check .
+
+# NOT run here: evals/run_eval.py. It invokes the Claude Code CLI, which costs money per run
+# and is not available on a hosted runner. Fixture measurement is a deliberate, local act —
+# see evals/README.md. Scoring a saved transcript with --from-file needs no CLI and could be
+# wired up if transcripts are ever committed.

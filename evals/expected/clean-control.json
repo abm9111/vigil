@@ -1,0 +1,16 @@
+{
+  "name": "clean-control",
+  "description": "Negative control. A small, correct, fully-typed pure-function module with no I/O, no network, no filesystem access, no secrets, no dependencies and no seeded defects. Any finding at all is a pure false positive — LOW and INFO included, because on a fixture with nothing wrong a hedged LOW is still something the auditor invented.",
+  "min_recall": 1.0,
+  "max_false_positives": 1,
+
+  "must_detect": [],
+
+  "acceptable_extra": [
+    "no tests",
+    "test coverage",
+    "missing test"
+  ],
+
+  "notes": "This is the sharpest fixture in the suite and the one to watch first. Recall fixtures reward eagerness; this one punishes it. An auditor that manufactures findings to look thorough fails here while scoring well everywhere else — which is exactly the failure mode RULES.md anti-pattern 3 (severity inflation) and Rule 8 (report a clean cluster as clean) exist to prevent. The single allowed false positive is deliberate slack for 'this module has no tests', which is defensible. Anything else — speculative injection, imagined path traversal, ReDoS claims about these bounded regexes — is the harness catching audit theatre. Do not raise max_false_positives to make a run pass; that inverts the purpose of the control."
+}

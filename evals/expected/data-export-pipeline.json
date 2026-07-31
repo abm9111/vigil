@@ -1,0 +1,144 @@
+{
+  "name": "data-export-pipeline",
+  "description": "A data export pipeline that ships a bundle to a partner organisation. Seeded with the five defect classes VIGIL missed on a real 2026-07 audit: silent sequence coercion, destructive-before-validate, absent validation gates, unlabelled model-generated prose, and a PII source file one `git add -A` from being committed. Every defect here was observed in production code, not invented.",
+  "min_recall": 0.8,
+  "max_false_positives": 3,
+  "must_detect": [
+    {
+      "id": "silent-sequence-coercion",
+      "severity": "HIGH",
+      "file": "build_export.py",
+      "signals": [
+        "ndarray",
+        "numpy"
+      ],
+      "why": "flatten() tests isinstance(v, (list, tuple)), but pyarrow returns list columns as numpy.ndarray. Non-matching cells fall through to str(), writing numpy reprs like \"['retention' 'premium']\" into the shipped CSV. Silent: no error, no warning, wrong data crosses to the partner.",
+      "lines": [
+        31,
+        34
+      ]
+    },
+    {
+      "id": "destructive-before-validate",
+      "severity": "HIGH",
+      "file": "build_export.py",
+      "signals": [
+        "rmtree",
+        "before",
+        "order",
+        "destroy",
+        "previous"
+      ],
+      "why": "shutil.rmtree(OUT) runs before read_parquet(). Any failure — missing input, schema drift, disk error — leaves an empty export directory and destroys the last known-good bundle. Matches correlation pattern 9, DESTRUCTIVE_BEFORE_VALIDATE.",
+      "lines": [
+        77,
+        80
+      ]
+    },
+    {
+      "id": "no-validation-gates",
+      "severity": "MEDIUM",
+      "file": "build_export.py",
+      "signals": [
+        "gate",
+        "validat",
+        "schema",
+        "no check",
+        "fail closed",
+        "assert"
+      ],
+      "why": "Zero schema or integrity gates. A shape change in segments.parquet or enrichment.json produces a silently wrong bundle that ships to a partner. Nothing can fail the build.",
+      "lines": [
+        80,
+        91
+      ]
+    },
+    {
+      "id": "unlabelled-model-output",
+      "severity": "HIGH",
+      "file": "enrichment.json",
+      "signals": [
+        "llm",
+        "model",
+        "generated",
+        "qwen",
+        "provenance",
+        "unlabel",
+        "enriched_by"
+      ],
+      "why": "summary and recommended_action are prose written by a local quantised model (_enriched_by: qwen3-14b). They ship to a partner in the same schema as sourced columns, and the recipient README documents them without ever saying they are machine-generated. recommended_action explicitly advises action. Matches correlation pattern 8, TRUST_LAUNDERING.",
+      "lines": [
+        7,
+        15
+      ]
+    },
+    {
+      "id": "pii-source-not-ignored",
+      "severity": "MEDIUM",
+      "file": "customer_registry.json",
+      "signals": [
+        "gitignore",
+        "pii",
+        "commit",
+        "registry",
+        "email",
+        "taxid",
+        "expos"
+      ],
+      "why": "customer_registry.json holds legal names, emails, phone numbers and tax IDs. .gitignore covers only build/tool artefacts (caches, export/), not this file, so `git add -A` commits it. The curated export was reviewed; the raw source beside it was not.",
+      "lines": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "self-certifying-manifest",
+      "severity": "LOW",
+      "file": "build_export.py",
+      "signals": [
+        "manifest",
+        "self-certif",
+        "checksum",
+        "same bundle",
+        "inside"
+      ],
+      "why": "MANIFEST.sha256 is written into the same directory it certifies and the README tells the recipient to verify against it. A tampered bundle carries a matching manifest. Matches correlation pattern 10, INTEGRITY_THEATER.",
+      "lines": [
+        89,
+        91
+      ]
+    }
+  ],
+  "acceptable_extra": [
+    "test",
+    "print",
+    "docstring",
+    "type hint",
+    "annotation",
+    "exception handling",
+    "logging",
+    "hardcoded path",
+    "snapshot",
+    "date.today",
+    "reproducib",
+    "encoding",
+    "bom",
+    "delimiter",
+    "never read",
+    "dead code",
+    "unused",
+    "requirements.txt",
+    "pyproject",
+    "undeclared",
+    "documents 7",
+    "column",
+    "validate=",
+    "merge",
+    "unsigned",
+    "mypy",
+    "pandas"
+  ],
+  "notes": "acceptable_extra covers findings that are legitimate but not the point of this fixture — flagging them is not penalised, missing the six above is. Raise min_recall as VIGIL improves; never lower it to make a run pass. Each defect declares `lines` — the actual location in the fixture. A finding must cite a line within `line_tolerance` of one of them to count as a catch. This is what stops keyword-sprinkling: reproducing the right line numbers requires having read the code.",
+  "acceptable_extra_provenance": "The second block was added after run 2, and only after each class was manually verified as a REAL defect in this fixture: SOURCE is defined at build_export.py:20 and never read; the bundle ships 10 columns while the recipient README documents 7 (regions, _generated_by, _generated_at undeclared); no dependency manifest exists while pandas is imported; merge(how='left') carries no validate=. CORRECTION (post-review): the 'nan' entry was REMOVED. It rested on a claim that a left-join miss reaches the CSV as the literal string 'nan'. It does not — pandas writes NaN as an empty field, and both fixture segment codes match anyway, so no miss exists. That row was accepted without being checked, inside a write-up that claimed every row had been checked. This is NOT the same act as raising max_false_positives, which stays at 3. If you widen this list without checking each entry against the code, stop: that is goalpost-moving wearing a disguise — and it already happened once, here.",
+  "line_tolerance": 6
+}

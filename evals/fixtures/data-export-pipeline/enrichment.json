@@ -1,0 +1,18 @@
+[
+  {
+    "segment_code": "S-1001",
+    "summary": "High-value accounts with strong retention and low churn risk.",
+    "recommended_action": "Prioritise for the premium onboarding track.",
+    "tags": ["retention", "premium"],
+    "_generated_by": "qwen3-14b-instruct-q4",
+    "_generated_at": "2026-02-19T04:11:02"
+  },
+  {
+    "segment_code": "S-1002",
+    "summary": "Dormant accounts likely to lapse within two quarters.",
+    "recommended_action": "Trigger the win-back sequence before renewal.",
+    "tags": ["churn", "dormant"],
+    "_generated_by": "qwen3-14b-instruct-q4",
+    "_generated_at": "2026-02-19T04:11:02"
+  }
+]

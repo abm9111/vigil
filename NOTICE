@@ -1,0 +1,52 @@
+VIGIL — Vigilant Infrastructure & Governance Intelligence Layer
+Copyright 2026 LocalForge
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+--------------------------------------------------------------------------------
+
+TRADEMARKS
+
+"VIGIL" and "LocalForge" are trademarks of LocalForge. The Apache License 2.0
+grants rights to the software; it does not grant permission to use these names,
+logos, or product names (Section 6).
+
+You may fork, modify, redistribute and sell this work, including commercially.
+If you distribute a modified version, please give it a different name so users
+can tell it apart from the original.
+
+--------------------------------------------------------------------------------
+
+THIRD-PARTY TOOLS
+
+VIGIL orchestrates external analysis tools but bundles none of them. Each is
+obtained and licensed separately by the user; see engines/preflight.md for the
+full manifest and install commands. Tools referenced include ruff, mypy, bandit,
+pip-audit, semgrep, gitleaks, trufflehog, detect-secrets, eslint, tsc, hadolint,
+trivy, slither, aderyn and echidna. Their licenses are their own and are not
+altered or sublicensed by this work.
+
+The evaluation harness (evals/run_eval.py) invokes the Claude Code CLI, which is
+not included and is subject to its own terms. Running it consumes paid API usage.
+
+--------------------------------------------------------------------------------
+
+NO WARRANTY, AND A SPECIFIC CAVEAT ABOUT SECURITY
+
+This is auditing tooling. Per Sections 7 and 8 of the License it is provided
+WITHOUT WARRANTY OF ANY KIND. Nothing here is a guarantee that a codebase is
+secure, compliant, or free of defects.
+
+A clean VIGIL report means the configured checks found nothing on that run. It
+is not certification, and it is not a substitute for professional security
+review, penetration testing, or legal compliance advice.

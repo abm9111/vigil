@@ -1,0 +1,35 @@
+# VIGIL is a Claude Code skill, not a distributable Python package — there is nothing to
+# import and nothing to `pip install`. This file exists so that ruff, mypy and pytest read
+# the same config locally and in CI; duplicated CLI flags drift, a config file cannot.
+#
+# The version below is the single source of truth. `L20` asserts every version string in the
+# repo agrees with it.
+[project]
+name = "vigil"
+version = "0.4.0"
+description = "Codebase quality and compliance audit skill for Claude Code"
+requires-python = ">=3.11"
+
+# Harness development only. VIGIL itself imports nothing beyond the standard library.
+[project.optional-dependencies]
+dev = ["pytest>=8", "mypy>=1.8", "ruff>=0.5"]
+
+# Config lives here rather than in CI flags, so a contributor running `ruff check` locally
+# gets the same verdict the pipeline does. Duplicated flags drift; this cannot.
+[tool.ruff]
+line-length = 100
+extend-exclude = ["evals/fixtures"]   # fixtures are deliberately defective — that is the point
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "SIM", "UP", "RUF", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+files = ["evals/check_repo.py", "evals/run_eval.py", "evals/build_ledger.py"]
+exclude = "evals/fixtures"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

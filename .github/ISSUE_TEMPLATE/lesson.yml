@@ -1,0 +1,54 @@
+name: Lesson — VIGIL was wrong
+description: Report a class of error VIGIL missed, misrated, or got backwards.
+title: "lesson: "
+labels: ["lesson"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never include your codebase.** No absolute paths, no real hostnames, no
+        `.vigil/context.md`, and no description of a weakness in a named system.
+
+        A lesson is about a *class* of error. The generalisable part is almost never the
+        proprietary part, so redaction usually costs nothing — and a redacted report is
+        usually the more useful one, because it states the class.
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: This contains no paths, hostnames, credentials, or details identifying a real system
+          required: true
+
+  - type: textarea
+    id: believed
+    attributes:
+      label: What VIGIL said (or failed to say)
+      placeholder: "VIGIL rated an unauthenticated internal-only endpoint LOW."
+    validations: { required: true }
+
+  - type: textarea
+    id: false
+    attributes:
+      label: Why that was wrong
+      description: Evidence someone else could reproduce — a minimal repro beats an argument.
+    validations: { required: true }
+
+  - type: input
+    id: class
+    attributes:
+      label: The class
+      description: The generalisable shape, not this incident.
+      placeholder: "reachability check trusted the router table and missed mesh-internal callers"
+    validations: { required: true }
+
+  - type: dropdown
+    id: mechanizable
+    attributes:
+      label: Could a check catch this class?
+      options:
+        - "Yes — a check could detect it"
+        - "No — it needs judgement"
+        - "Not sure"
+    validations: { required: true }
