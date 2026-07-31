@@ -65,6 +65,21 @@ and editing the threshold discards it.
 - Widening `acceptable_extra` without verifying each entry against the fixture — this has
   happened once and is recorded in `evals/expected/data-export-pipeline.json`
 
+## Publishing
+
+`L21` blocks unfilled placeholders — `OWNER/REPO`, `<this-repo>` — but only once a git remote
+exists. While the repo is local the URL is genuinely unknown and a placeholder is correct;
+adding a remote is the moment it becomes wrong. So the first `git remote add` will turn the
+self-audit red until the real URL is filled in, in:
+
+- `README.md` — the clone command
+- `CHANGELOG.md` — the release link
+- `.github/ISSUE_TEMPLATE/config.yml` — the security-advisory and lessons links
+
+`LICENSE` is deliberately exempt. Its appendix carries `[yyyy]` and `[name of copyright
+owner]` as part of the canonical Apache-2.0 text; filling those in would stop it being the
+licence it claims to be. Attribution lives in `NOTICE`.
+
 ## Scope
 
 VIGIL is deliberately not a scanner. It orchestrates tools you already have and reasons across

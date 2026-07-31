@@ -139,6 +139,23 @@ def test_l5_catches_an_orphan(repo: Path) -> None:
     assert code != 0 and "[L5]" in out, f"L5 did not catch an orphan engine:\n{out}"
 
 
+def test_l21_fires_only_once_a_remote_exists(repo: Path) -> None:
+    """Publish placeholders are correct while local, wrong once there is somewhere to push.
+
+    Both halves matter: firing early leaves the self-audit permanently red, and not firing
+    at all ships `git clone <this-repo>` to a stranger.
+    """
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    code, out = run_check(repo)
+    assert code == 0 and "[L21]" not in out, f"L21 fired with no remote:\n{out}"
+
+    subprocess.run(
+        ["git", "remote", "add", "origin", "https://example.com/x.git"], cwd=repo, check=True
+    )
+    code, out = run_check(repo)
+    assert code != 0 and "[L21]" in out, f"L21 did not fire with a remote set:\n{out}"
+
+
 def test_every_documented_check_has_a_test() -> None:
     """The suite must keep pace with the checks.
 
@@ -147,6 +164,6 @@ def test_every_documented_check_has_a_test() -> None:
     """
     src = (REPO / "evals" / "check_repo.py").read_text(encoding="utf-8")
     documented = set(re.findall(r"^  (L\d+) ", src, re.M))
-    tested = {b[0] for b in BREAKERS} | {"L5"}
+    tested = {b[0] for b in BREAKERS} | {"L5", "L21"}
     missing = documented - tested
     assert not missing, f"checks with no failing-case test: {sorted(missing)}"

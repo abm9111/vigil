@@ -31,6 +31,7 @@ Checks:
   L18 LEDGER.md matches the lessons it is generated from
   L19 contributed lessons/results carry no real paths, hosts, keys or emails
   L20 every version string agrees with pyproject.toml
+  L21 no unfilled publish placeholders (OWNER/REPO, <this-repo>)
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -621,6 +622,52 @@ def check_version_agreement(r: Report) -> None:
                               f"pyproject.toml says {want}")
 
 
+# Strings that are fine while a repo is private and broken the moment it is published.
+# `vigil.example` is deliberately absent: an example homepage is honest for a project with
+# no homepage, unlike a link that resolves to the wrong place.
+PUBLISH_BLOCKERS = (
+    ("OWNER/REPO", "a GitHub owner/repo placeholder"),
+    ("<this-repo>", "a clone-URL placeholder"),
+    ("github.com/user/", "a stub GitHub URL"),
+)
+
+
+def check_publish_placeholders(r: Report) -> None:
+    """L21 — no unfilled placeholder may reach a published repo.
+
+    A README telling a new user to `git clone <this-repo>` and an issue form linking to
+    OWNER/REPO are the first two things a visitor touches, and both fail silently: the link
+    404s, the clone command is not a command. Cheap to leave in, embarrassing to ship.
+
+    LICENSE is exempt. Its appendix contains `[yyyy]` and `[name of copyright owner]` as part
+    of the canonical Apache-2.0 text — filling those in would make the file no longer the
+    licence it claims to be. Attribution belongs in NOTICE, which is where it is.
+
+    Only fires once a git remote exists. A placeholder is correct while the repo is local and
+    the URL is genuinely unknown; it becomes wrong the moment there is somewhere to publish
+    to. Failing before then would leave the self-audit permanently red, which teaches people
+    to skim past it — the failure mode this check exists to avoid.
+    """
+    remotes = subprocess.run(
+        ["git", "-C", str(ROOT), "remote"], capture_output=True, text=True, check=False
+    )
+    if not remotes.stdout.strip():
+        return
+    for f in sorted(ROOT.rglob("*")):
+        if not f.is_file() or ".git" in f.relative_to(ROOT).parts:
+            continue
+        if f.name == "LICENSE" or f.suffix not in (".md", ".yml", ".yaml", ".toml", ".py"):
+            continue
+        try:
+            text = f.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for needle, what in PUBLISH_BLOCKERS:
+            if needle in text and "PUBLISH_BLOCKERS" not in text:
+                r.fail("L21", f"{f.relative_to(ROOT)} contains {what} ({needle!r}) — "
+                              "fill it in before publishing")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -646,6 +693,7 @@ def main() -> int:
     check_ledger_dashboard(r)
     check_contributed_privacy(r)
     check_version_agreement(r)
+    check_publish_placeholders(r)
     return r.emit()
 
 
