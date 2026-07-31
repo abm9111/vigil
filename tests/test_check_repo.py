@@ -148,6 +148,9 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     # privacy gate — which is exactly what happened before L29 existed.
     ("L29", lambda r: edit(r / "schemas" / "run-record.schema.json",
                            '"SEC", "CODE",', '"CODE",')),
+    # The realistic erosion: someone trims the "sounds paranoid" clause. It is one bullet.
+    ("L30", lambda r: strip_lines(r / "engines" / "preflight.md",
+                                  "cannot contribute to a ceiling of 100")),
     ("L26", lambda r: edit(r / "proof" / "0001-secret-removed-from-tree-still-live-in-history.md",
                            "severity: HIGH", "severity: SEVERE")),
     ("L28", flip_share_default),

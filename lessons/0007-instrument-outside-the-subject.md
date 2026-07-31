@@ -6,8 +6,8 @@ missed_by: author, preflight
 found_detail: the project's own CI ran the same tool inside the project environment and disagreed
 missed_detail: preflight probed the tool and passed it; every local run agreed with itself
 class: an instrument resolved outside the subject's environment fails silently clean
-status: open
-check:
+status: mechanized
+check: L30
 ---
 
 # A type checker reported a codebase clean because it could not import the codebase's dependencies

@@ -130,6 +130,48 @@ Coverage  security     0/4 required            N/E  ⛔ no evidence
           → Audit is INCOMPLETE. No pass verdict will be issued.
 ```
 
+## A tool must resolve inside the subject's environment
+
+Probing that a binary *runs* is not probing that it can *see the subject*. `lessons/0007`
+records a type checker that ran, exited 0 and reported a codebase clean while being unable to
+import a single one of that codebase's dependencies. The project's own CI, running the same
+tool from inside the project environment, found 6 errors in 4 files.
+
+This is worse than a missing tool in one specific way: **a missing tool is loud and a
+misresolved one is silent, and the silent failure points at clean.** Preflight exists to stop
+VIGIL claiming coverage it does not have, so a failure mode that manufactures coverage is
+aimed directly at it.
+
+**Resolve, then compare.** Record the absolute path of every tool and whether it lies inside
+the subject's environment:
+
+```bash
+# Python — does the tool the shell finds match the one the project's interpreter sees?
+command -v mypy
+python -c 'import mypy, pathlib; print(pathlib.Path(mypy.__file__).parent)' 2>/dev/null \
+  || echo "the project interpreter cannot import mypy at all"
+
+# JavaScript — a global eslint reads none of the project's plugin resolution
+ls node_modules/.bin/eslint 2>/dev/null || echo "no project-local eslint"
+```
+
+**Prefer the project-local invocation and record which you used:** `python -m mypy` over bare
+`mypy`, `./node_modules/.bin/eslint` or `npx --no-install eslint` over a global `eslint`. Where
+the project ships its own runner — `uv run`, `poetry run`, `npm run lint`, a `Makefile` target —
+that runner *is* the correct invocation, and the CI workflow is where to find it. `lessons/0007`
+was found by CI disagreeing with a local run; reading the workflow first would have found it
+sooner.
+
+**The trap that makes this fail clean.** Analyzers that accept an "ignore unresolvable imports"
+setting — `mypy`'s `ignore_missing_imports`, a linter with unresolved-module suppression — do
+not error when the environment is wrong. They degrade every affected value to a permissive type
+and pass. So the absence of errors is evidence of nothing until imports are known to resolve:
+
+> If the analyzer cannot import the subject's dependencies, its clean result is **not
+> evidence**. Treat that cluster's type-safety portion as **N/E**, not as scored.
+
+**Rule 6 below makes the consequence binding.**
+
 ## A probe must be able to fail
 
 The sharpest test for whether a cluster's evidence is real: **could the probe ever report
@@ -165,3 +207,9 @@ rather than a measurement.
 5. **Preflight output is part of the deliverable.** When the audit is handed to someone else,
    the coverage ledger travels with the findings — otherwise they inherit a number without
    knowing what it was based on.
+6. **A tool resolved outside the subject's environment cannot contribute to a ceiling of 100.**
+   Record the resolved path beside the version in the capability report and in
+   `.vigil/baseline.json`. Treat the reduction exactly as a missing tool is treated — because
+   epistemically it is one: the run produced output about a project it could not fully see.
+   Never treat "it exited 0" as coverage without knowing what it was able to read
+   (`lessons/0007`).

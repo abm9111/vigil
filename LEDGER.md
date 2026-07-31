@@ -7,7 +7,7 @@ Where VIGIL's improvements actually came from. Every row is backed by a committe
 lesson in [`lessons/`](lessons/README.md) recording something VIGIL, or its own
 self-audit, got **wrong**.
 
-**4 of 10 classes mechanized** · 10 lessons · 5 open · 1 judged unmechanizable
+**5 of 10 classes mechanized** · 10 lessons · 4 open · 1 judged unmechanizable
 
 ## Contributors
 
@@ -17,7 +17,7 @@ one shape is one class — the metric is deliberately hard to inflate.
 | Contributor | Classes | Lessons | Mechanized |
 |---|---|---|---|
 | Author / implementer | **5** | 5 | 2 |
-| ci | **2** | 2 | 0 |
+| ci | **2** | 2 | 1 |
 | Grok (cross-model review) | **2** | 2 | 1 |
 | Kimi (cross-model review) | **2** | 2 | 1 |
 | The audited model itself | **1** | 1 | 1 |
@@ -49,7 +49,7 @@ human reading carefully and one found by an automated check are very different s
 | a finding is relative to a tree, and the tree is never named | ⏳ | [An audit report was headed with a commit SHA; it had audited neither that commit nor anything equal to it](lessons/0010-which-tree-was-audited.md) |
 | a measurement instrument that fails in both directions | ⏳ | [The eval reported 100% recall for an audit containing no analysis — twice, after two fixes](lessons/0005-metric-that-flatters.md) |
 | a scanner hit is a pointer to a question, not an answer to it | ⏳ | [Two findings were reported from scanner output; both files already answered the scanner](lessons/0009-scanner-hit-is-a-pointer.md) |
-| an instrument resolved outside the subject's environment fails silently clean | ⏳ | [A type checker reported a codebase clean because it could not import the codebase's dependencies](lessons/0007-instrument-outside-the-subject.md) |
+| an instrument resolved outside the subject's environment fails silently clean | ✅ `L30` | [A type checker reported a codebase clean because it could not import the codebase's dependencies](lessons/0007-instrument-outside-the-subject.md) |
 | an unchecked claim wearing the words of a checked one | 🚫 | [A write-up said "each was manually verified" — one of them had not been](lessons/0003-unverified-verification.md) |
 | contributed material carries the contributor's real system | ✅ `L19` | [The skill's own docs shipped a live business's domains, compliance posture and architecture](lessons/0006-context-file-is-an-attack-map.md) |
 | cross-file composition — two sound rules, one unsound combination | ✅ `L15, L16 (partial — see below)` | [Correlation could raise the score by deleting findings, twice, through two different channels](lessons/0004-rules-that-do-not-compose.md) |

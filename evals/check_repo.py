@@ -41,6 +41,7 @@ Checks:
   L28 the end-of-run consent contract is intact (default no, silence is not consent,
       a decline is honoured, the record can be shown in full, there is an off switch)
   L29 the record schema's cluster vocabulary matches RULES.md
+  L30 preflight requires a tool to resolve inside the subject's environment
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -982,6 +983,50 @@ def check_schema_prefixes(r: Report) -> None:
                       "a real run emitting it would be blocked by the privacy gate")
 
 
+# Each: (what it guarantees, pattern that must appear in engines/preflight.md).
+# Prose again, for the same reason as L28 — the probe is executed by a model reading this file.
+# The check proves the requirement is stated and unambiguous, not that a given run obeyed it.
+RESOLUTION_CLAUSES: list[tuple[str, str]] = [
+    ("a tool must resolve inside the subject's environment",
+     r"resolve inside the subject|outside the subject'?s environment"),
+    ("the resolved path is recorded, not just the version",
+     r"absolute path of every tool|resolved path beside"),
+    ("a misresolved tool cannot reach ceiling 100",
+     r"cannot contribute to a ceiling of 100"),
+    # `[\s>]*` because the clause sits in a blockquote and wraps: `**not\n> evidence**`.
+    # The first version of this pattern assumed a plain line break and failed on its own
+    # prose — a check whose regex is more fragile than the rule it guards.
+    ("an analyzer that cannot import the subject's dependencies is not evidence",
+     r"clean result is \*\*not[\s>]*evidence\*\*"),
+    ("the project-local invocation is preferred",
+     r"project-local invocation|python -m mypy"),
+]
+
+
+def check_tool_resolution(r: Report) -> None:
+    """L30 — preflight must require that a tool resolve inside the subject's environment.
+
+    `lessons/0007`: a type checker ran, exited 0, and reported a codebase clean while unable to
+    import any of that codebase's dependencies. Preflight passed it, because preflight asked
+    "does a binary of this name run?" — strictly weaker than "is this the tool that sees what
+    the subject sees?".
+
+    A missing tool is loud: capped ceiling, printed install command. A misresolved one is
+    silent and **fails toward clean**, which is the one direction preflight exists to prevent.
+    So this class deserves a check even though the enforcement is instructional, and the
+    honest limit is the same as L28's: presence of the rule, not obedience to it.
+    """
+    path = ROOT / "engines" / "preflight.md"
+    if not path.exists():
+        r.fail("L30", "engines/preflight.md is missing")
+        return
+    text = path.read_text(encoding="utf-8")
+    for guarantee, pattern in RESOLUTION_CLAUSES:
+        if not re.search(pattern, text, re.I):
+            r.fail("L30", f"preflight.md no longer requires that {guarantee} — "
+                          "lessons/0007 is the reason this is enforced")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -1016,6 +1061,7 @@ def main() -> int:
     check_corpus_bundles(r)
     check_consent_contract(r)
     check_schema_prefixes(r)
+    check_tool_resolution(r)
     return r.emit()
 
 

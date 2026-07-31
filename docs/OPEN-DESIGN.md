@@ -143,7 +143,7 @@ publish.
 
 ## D6 — Preflight probes a tool's existence, not its environment
 
-**Status:** open · **Raised by:** [`lessons/0007`](../lessons/0007-instrument-outside-the-subject.md)
+**Status:** MECHANIZED 2026-07-31 as `L30` · **Raised by:** [`lessons/0007`](../lessons/0007-instrument-outside-the-subject.md)
 
 Preflight asks "does a binary of this name run?" A tool resolved from outside the subject's
 environment answers yes, then reports on a project whose dependency graph it cannot see. With
@@ -158,8 +158,18 @@ subject's environment (venv, node_modules, lockfile-managed toolchain). Treat "r
 the subject environment" as a coverage reduction — the same ceiling machinery as a missing tool
 — rather than a pass.
 
-**Done when:** the capability report prints the resolved path beside each tool, and a tool
-resolved outside the subject environment cannot contribute to a ceiling of 100.
+**Done:** `engines/preflight.md` now requires the resolved path to be recorded, prefers the
+project-local invocation, and makes Rule 6 binding — a tool resolved outside the subject's
+environment cannot contribute to a ceiling of 100. The sharp sub-case is fenced explicitly:
+an analyzer that cannot import the subject's dependencies produces a clean result that is
+**not evidence**, so that portion is N/E rather than scored.
+
+`L30` asserts each clause survives, with the same honest limit as `L28` — it proves the
+requirement is stated, not that a run obeyed it. Verified by softening the ceiling clause to
+"should ideally be noted" and watching it fire.
+
+**Still open:** nothing enforces this at *run* time. A behavioural test needs a fixture with a
+deliberately misresolved toolchain, which is the same live-CLI harness D5 needs.
 
 ---
 
@@ -232,7 +242,7 @@ differs from that commit, and the egress cluster's scans are ignore-agnostic by 
 
 ## Checks that would catch the classes above
 
-`evals/check_repo.py` runs 29 structural checks. Every one was added after a real gap got past
+`evals/check_repo.py` runs 30 structural checks. Every one was added after a real gap got past
 the previous set. Known remaining blind spots, from Kimi's M11:
 
 | Class | Caught? | Note |
