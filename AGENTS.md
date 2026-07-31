@@ -15,7 +15,7 @@ of the self-audit exists to catch exactly that.
 ## Before you finish any change
 
 ```bash
-python3 evals/check_repo.py       # 22 structural checks · <1s · no LLM, no network
+python3 evals/check_repo.py       # 26 structural checks · <1s · no LLM, no network
 python3 evals/check_loadable.py   # the skill is still discoverable
 pytest tests/ -q                  # every check must be able to FAIL
 mypy && ruff check .              # config in pyproject.toml
@@ -48,6 +48,13 @@ instance of this.
 **Never commit anything identifying a real system.** No absolute paths, no hostnames, no
 `.vigil/context.md` content. `L19` catches the mechanical shapes and cannot read prose. This
 repo previously shipped a live business's domains through three reviews (`lessons/0006`).
+
+**Never add a free-text field to the run-record schema.** The privacy guarantee for field
+telemetry is structural, not procedural: a path or finding description has no field to occupy,
+so it is unrepresentable rather than redacted. One `{"type": "string"}` added to capture "just
+the tool version" reopens the whole surface while every existing test still passes. `L25`
+refuses it — if you find yourself wanting to disable that check, the design has changed and
+that is a conversation, not a commit.
 
 ## Where things live
 

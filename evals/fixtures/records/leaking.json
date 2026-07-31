@@ -1,0 +1,19 @@
+{
+  "_comment": "DELIBERATELY DEFECTIVE FIXTURE — the privacy gate must BLOCK this file. Every value below is synthetic (alice / acme-billing are not real); see feedback in evals/fixtures/README if present. It models the realistic leak, not a malicious one: a contributor adding context to be helpful. Three separate violations, so the gate cannot pass by catching only the easy one.",
+  "schema_version": 1,
+  "vigil_version": "0.4.0",
+  "mode": "audit",
+  "repo": "/Users/alice/work/acme-billing",
+  "remote": "git@github.com:acme-internal/billing.git",
+  "stack": ["python"],
+  "clusters": [
+    {
+      "prefix": "VIGIL-SEC",
+      "verdict": "scored",
+      "evidence": "hardcoded credential in src/billing/charge.py:88",
+      "findings": { "high": 1 }
+    }
+  ],
+  "score": 44,
+  "grade": "F"
+}

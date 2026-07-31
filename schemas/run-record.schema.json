@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/OWNER/REPO/schemas/run-record.schema.json",
+  "title": "VIGIL run record",
+  "description": "One audit run, reduced to VIGIL's own vocabulary. THE PRIVACY GUARANTEE IS STRUCTURAL: every string in this schema is an enum or a bounded pattern, and additionalProperties is false at every level. A file path, repo name, hostname, customer name or finding description has no field to live in — it is not redacted, it is unrepresentable. Adding a free-text field to this file removes that guarantee, which is why L25 refuses one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "vigil_version", "mode", "clusters"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "vigil_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "mode": {
+      "enum": ["scan", "audit", "siege", "watch", "score", "compare"]
+    },
+    "stack": {
+      "description": "Detected ecosystems. A bounded enum, not a dependency list — 'we found a package.json' is a fact about a class of project, 'we found @acme/billing-sdk' is a fact about a company.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["python", "node", "typescript", "go", "rust", "java", "ruby", "php",
+                 "dotnet", "solidity", "swift", "kotlin", "docker", "terraform",
+                 "kubernetes", "sql", "other"]
+      }
+    },
+    "size_bucket": {
+      "description": "Bucketed, never exact. An exact file count is a weak fingerprint of a specific repo.",
+      "enum": ["xs", "s", "m", "l", "xl"]
+    },
+    "duration_bucket": {
+      "description": "Bucketed for the same reason as size, plus: wall-clock timing correlates with a machine.",
+      "enum": ["under_1m", "1_5m", "5_15m", "15_30m", "over_30m"]
+    },
+    "clusters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prefix", "verdict"],
+        "properties": {
+          "prefix": {
+            "enum": ["VIGIL-AIML", "VIGIL-API", "VIGIL-CHAIN", "VIGIL-CODE", "VIGIL-COMP",
+                     "VIGIL-DATA", "VIGIL-EGRESS", "VIGIL-FE", "VIGIL-INFRA",
+                     "VIGIL-PERF", "VIGIL-SEC"]
+          },
+          "verdict": {
+            "description": "scored = a probe ran and produced evidence. na = genuinely not applicable to this stack. ne = NO EVIDENCE: applicable, but nothing could prove it either way. The ne count across many runs is the empirical answer to D1.",
+            "enum": ["scored", "na", "ne"]
+          },
+          "na_trigger": {
+            "description": "Which applicability trigger justified an na verdict. Present only when verdict is na — an unexplained na is the cheap escape scoring.md warns about.",
+            "enum": ["no_matching_files", "no_matching_manifest", "stack_absent",
+                     "explicitly_out_of_scope"]
+          },
+          "findings": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Counts only. Never the findings themselves.",
+            "properties": {
+              "critical": { "type": "integer", "minimum": 0 },
+              "high": { "type": "integer", "minimum": 0 },
+              "medium": { "type": "integer", "minimum": 0 },
+              "low": { "type": "integer", "minimum": 0 },
+              "info": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "tools_used": { "$ref": "#/definitions/toolList" },
+          "tools_missing": {
+            "description": "Tools the cluster wanted and could not find. Aggregated, this is the preflight gap report.",
+            "$ref": "#/definitions/toolList"
+          }
+        }
+      }
+    },
+    "correlations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["ENDPOINT_STACK", "DATA_EXPOSURE_CHAIN", "INJECTION_WITH_PRIVILEGE",
+                 "OBSERVABILITY_BLINDSPOT", "DEPENDENCY_AND_REACHABILITY",
+                 "CONFIG_SECRET_EXPOSURE", "AUTH_BYPASS_WITH_SCOPE", "TRUST_LAUNDERING",
+                 "DESTRUCTIVE_BEFORE_VALIDATE", "INTEGRITY_THEATER"]
+      }
+    },
+    "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "grade": { "enum": ["A", "B", "C", "D", "F"] },
+    "outcomes": {
+      "description": "THE LEARNING SIGNAL. What the human did with each finding. A finding dismissed as a false positive across many runs is a rule that needs changing — this is the only field that tells VIGIL it was wrong, and it still carries no content.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prefix", "severity", "disposition"],
+        "properties": {
+          "prefix": {
+            "enum": ["VIGIL-AIML", "VIGIL-API", "VIGIL-CHAIN", "VIGIL-CODE", "VIGIL-COMP",
+                     "VIGIL-DATA", "VIGIL-EGRESS", "VIGIL-FE", "VIGIL-INFRA",
+                     "VIGIL-PERF", "VIGIL-SEC", "CORR"]
+          },
+          "severity": { "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"] },
+          "disposition": {
+            "enum": ["accepted", "false_positive", "duplicate", "deferred",
+                     "wrong_severity", "not_reachable"]
+          },
+          "tool": { "$ref": "#/definitions/tool" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "tool": {
+      "enum": ["bandit", "semgrep", "gitleaks", "trufflehog", "detect-secrets", "pip-audit",
+               "ruff", "mypy", "eslint", "tsc", "trivy", "hadolint", "slither", "aderyn",
+               "echidna", "codeql", "npm-audit", "cargo-audit", "govulncheck", "none"]
+    },
+    "toolList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/definitions/tool" }
+    }
+  }
+}

@@ -47,8 +47,23 @@ human reading carefully and one found by an automated check are very different s
 ✅ mechanized — a check now catches this class · ⏳ open — should be mechanized, is not
 yet · 🚫 unmechanizable — genuinely not machine-checkable, with the reason in the lesson
 
+## Proof — found on real codebases
+
+Times VIGIL found something real on a codebase that was not its own. Entries name a **class** of finding and never a system — see [`proof/README.md`](proof/README.md).
+
+**1 entry** · 1 missed by the project's existing tooling
+
+| Cluster | Severity | Tool | Missed by existing tooling | Finding class |
+|---|---|---|---|---|
+| VIGIL-SEC | HIGH | `gitleaks` | ✅ | [A credential can be "removed" in every sense a reviewer checks and still be published](proof/0001-secret-removed-from-tree-still-live-in-history.md) |
+
 ## Contributing
 
 If you found VIGIL wrong, that is the contribution. Send the lesson, not a rule edit —
 evidence is safe to accept from a stranger, an assertion about evidence is not. See
 [`lessons/README.md`](lessons/README.md).
+
+If it found something real on your code, that is the other contribution — see
+[`proof/README.md`](proof/README.md). Neither one may contain your codebase: entries
+name a class, never a system. Run records are content-free by construction and stay on
+your machine unless you choose otherwise ([`engines/telemetry.md`](engines/telemetry.md)).

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "vigil_version": "0.4.0",
+  "mode": "audit",
+  "stack": ["python", "docker"],
+  "size_bucket": "m",
+  "duration_bucket": "5_15m",
+  "clusters": [
+    {
+      "prefix": "VIGIL-SEC",
+      "verdict": "scored",
+      "findings": { "critical": 0, "high": 1, "medium": 2, "low": 5 },
+      "tools_used": ["gitleaks", "bandit"],
+      "tools_missing": ["semgrep"]
+    },
+    {
+      "prefix": "VIGIL-EGRESS",
+      "verdict": "ne"
+    },
+    {
+      "prefix": "VIGIL-CHAIN",
+      "verdict": "na",
+      "na_trigger": "stack_absent"
+    }
+  ],
+  "correlations": ["CONFIG_SECRET_EXPOSURE"],
+  "score": 71,
+  "grade": "C",
+  "outcomes": [
+    { "prefix": "VIGIL-SEC", "severity": "HIGH", "disposition": "accepted", "tool": "gitleaks" },
+    { "prefix": "VIGIL-CODE", "severity": "LOW", "disposition": "false_positive", "tool": "ruff" }
+  ]
+}

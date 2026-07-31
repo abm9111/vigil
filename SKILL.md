@@ -65,6 +65,9 @@ For ANY `/vigil` invocation:
 9. **AI reasoning SECOND** — interpret, correlate, prioritize tool output
 10. **Score and report** — per [engines/scoring.md](engines/scoring.md). Apply severity floors
     and evidence ceilings; never emit a pass verdict while a cluster is N/E.
+11. **Write a run record** — per [engines/telemetry.md](engines/telemetry.md). One content-free
+    JSON file in the audited repo's own `.vigil/runs/`. Local only; **never transmitted**. This
+    is what lets VIGIL learn from real use without ever ingesting the user's work.
 
 ## Flag Quick Reference
 
@@ -113,6 +116,7 @@ See [FLAGS.md](FLAGS.md) for full details.
 | [RULES.md](RULES.md) | Iron rules, severity definitions, evidence requirements |
 | [evals/README.md](evals/README.md) | Fixture-based recall / false-positive measurement + repo self-audit |
 | [lessons/README.md](lessons/README.md) | Ledger of times VIGIL was wrong, and what now catches that class |
+| [proof/README.md](proof/README.md) | Times VIGIL was right on a real codebase — the other half of the record |
 | [FLAGS.md](FLAGS.md) | All flags with defaults and interactions |
 | [engines/correlation.md](engines/correlation.md) | 10 cross-domain correlation patterns — 7 adversarial, 3 non-adversarial |
 | [engines/preflight.md](engines/preflight.md) | Tool probing, evidence ceilings, capability report (runs first) |
@@ -124,6 +128,7 @@ See [FLAGS.md](FLAGS.md) for full details.
 | [engines/contract-orchestrator.md](engines/contract-orchestrator.md) | Slither + Aderyn + Echidna smart contract pipeline |
 | [engines/tracking.md](engines/tracking.md) | Bounty, CVE, engagement & revenue tracking |
 | [engines/context-loader.md](engines/context-loader.md) | Context file discovery, parsing, and application (v2) |
+| [engines/telemetry.md](engines/telemetry.md) | Content-free run records — how VIGIL learns from real use without ingesting it |
 | [CONTEXT.md](CONTEXT.md) | Design and usage guide for project context awareness (v2) |
 | [compliance-maps/](compliance-maps/) | SOC2, ISO 27001, OWASP 2025 mappings |
 | [companions/](companions/) | 7 micro-commands (diff, explain, baseline, bounty, recon, triage, track) |

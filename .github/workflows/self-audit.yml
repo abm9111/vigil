@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Structural self-audit (16 checks, no LLM, no network)
+      - name: Structural self-audit (26 checks, no LLM, no network)
         run: python3 evals/check_repo.py
 
       # The dashboard is generated, so a PR that adds a lesson must regenerate it. L18
@@ -31,6 +31,19 @@ jobs:
 
       - name: Learning dashboard is current
         run: python3 evals/build_ledger.py --check
+
+      # The privacy gate protects contributors, so it must work on a machine that is not the
+      # maintainer's. A record fixture that should pass and one that should be blocked — if
+      # the gate ever stops blocking, that is the failure nobody would otherwise notice until
+      # someone's architecture is in a public git history.
+      - name: Privacy gate blocks a leaking record
+        run: |
+          set -e
+          python3 evals/privacy_gate.py evals/fixtures/records/clean.json
+          if python3 evals/privacy_gate.py evals/fixtures/records/leaking.json 2>/dev/null; then
+            echo "::error::privacy gate PASSED a record it must block"; exit 1
+          fi
+          echo "privacy gate correctly blocked the leaking record"
 
       - name: Install dev dependencies
         run: pip install --quiet pytest mypy ruff

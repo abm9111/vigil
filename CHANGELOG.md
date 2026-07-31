@@ -16,7 +16,11 @@ The release where the project started producing its own evidence.
   `INTEGRITY_THEATER`. Non-adversarial: no attacker required.
 - **Data Egress & Provenance cluster** — exports, PII in files rather than schemas,
   AI-content labelling, reproducible builds.
-- **`evals/check_repo.py`** — 20 structural self-checks, each with a test proving it fails.
+- **`evals/check_repo.py`** — 26 structural self-checks, each with a test proving it fails.
+- **Field learning loop** — `engines/telemetry.md` plus `schemas/run-record.schema.json`,
+  `evals/privacy_gate.py` and `evals/learn.py`. Run records are content-free *by construction*
+  (closed schema, every string an enum) and never leave the machine without an explicit human
+  act. `proof/` records what VIGIL found on real codebases, the counterpart to `lessons/`.
 - **`lessons/`** — a ledger of times VIGIL was wrong, with `LEDGER.md` generated from it.
 - **`tests/`** — pytest suite; every check must be demonstrably able to fail.
 - Apache-2.0 `LICENSE` + `NOTICE`, `SECURITY.md`, `CONTRIBUTING.md`, CI, issue/PR templates.

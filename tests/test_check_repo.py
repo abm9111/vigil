@@ -119,6 +119,15 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     ("L22", lambda r: edit(r / "SKILL.md", "name: vigil", "nom: vigil")),
     ("L23", lambda r: edit(r / "evals" / "assertions" / "vigil.json",
                            '"id": 2,', '"id": 1,')),
+    ("L24", lambda r: edit(r / "README.md",
+                           "# 26 structural checks", "# 99 structural checks")),
+    # The mutation that matters most: one unconstrained string reopens the whole surface,
+    # and every other test in this file still passes.
+    ("L25", lambda r: edit(r / "schemas" / "run-record.schema.json",
+                           '"score": { "type": "integer"',
+                           '"notes": { "type": "string" },\n    "score": { "type": "integer"')),
+    ("L26", lambda r: edit(r / "proof" / "0001-secret-removed-from-tree-still-live-in-history.md",
+                           "severity: HIGH", "severity: SEVERE")),
 ]
 
 

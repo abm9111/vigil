@@ -27,7 +27,8 @@ ignore = ["E501"]
 [tool.mypy]
 strict = true
 ignore_missing_imports = true
-files = ["evals/check_repo.py", "evals/run_eval.py", "evals/build_ledger.py"]
+files = ["evals/check_repo.py", "evals/run_eval.py", "evals/build_ledger.py",
+         "evals/privacy_gate.py", "evals/learn.py"]
 exclude = "evals/fixtures"
 
 [tool.pytest.ini_options]

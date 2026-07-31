@@ -29,11 +29,14 @@ Checks:
   L16 the cluster_score formula keeps its evidence-ceiling term
   L17 the lessons ledger is internally honest (claimed checks exist; open work tracked)
   L18 LEDGER.md matches the lessons it is generated from
-  L19 contributed lessons/results carry no real paths, hosts, keys or emails
+  L19 contributed lessons/results/proof carry no real paths, hosts, keys or emails
   L20 every version string agrees with pyproject.toml
   L21 no unfilled publish placeholders (OWNER/REPO, <this-repo>)
   L22 SKILL.md is discoverable by Claude Code (frontmatter, name, description)
   L23 assertion evals are well-formed (ids unique, fields present, >=2 assertions)
+  L24 every prose restatement of the check count matches the real one
+  L25 the run-record schema stays closed — no free-text field can be added to it
+  L26 proof entries are well-formed and use the controlled vocabulary
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -571,6 +574,12 @@ def check_contributed_privacy(r: Report) -> None:
     results = ROOT / "evals" / "results"
     if results.is_dir():
         surfaces += list(results.glob("*.md"))
+    # proof/ is the third contributed surface, and the one most likely to leak: an entry
+    # showing VIGIL caught something real is *trying* to be impressive, and specificity is
+    # what makes a war story impressive.
+    proof = ROOT / "proof"
+    if proof.is_dir():
+        surfaces += list(proof.glob("*.md"))
 
     # A hostname needs a real TLD. Matching "anything.anything" flagged `numpy.ndarray`,
     # `date.today` and the version string `2.3` as hosts — noise that would train a
@@ -723,6 +732,131 @@ def check_assertion_evals(r: Report) -> None:
                           "restatement of the prompt, not a grading criterion")
 
 
+def check_stated_check_count(r: Report) -> None:
+    """L24 — a prose restatement of the check count must match reality.
+
+    Found the hard way: this repo simultaneously claimed 19, 22 and 23 checks in three
+    different files. Nothing noticed, because the count is authored prose and the authority is
+    code. That is precisely the drift L13 and L20 already mechanize for weights and versions —
+    the number that says how much verification exists is a strange one to leave unverified.
+
+    `lessons/`, `proof/` and `CHANGELOG.md` are exempt: "at the time there were six checks" is
+    a historical statement, and correcting it would falsify the record it exists to keep.
+
+    CI workflows are in scope. The count first drifted in a step *name* — prose in YAML is
+    still prose, and scanning only markdown would have left the same claim wrong in the one
+    place every contributor reads first.
+    """
+    src = Path(__file__).read_text(encoding="utf-8")
+    real = len(set(re.findall(r'r\.fail\("(L\d+)"', src)))
+    if not real:
+        r.fail("L24", "could not count checks from this file's own r.fail calls")
+        return
+    # "26 checks", "26 structural checks", "26 structural self-checks" — the phrasing varies
+    # and every variant is the same claim.
+    stated = re.compile(r"\b(\d+)[ -](?:structural[ -])?(?:self-)?checks\b")
+    scanned = [f for f in md_files()
+               if f.relative_to(ROOT).parts[0] not in ("lessons", "proof")
+               and f.name != "CHANGELOG.md"]
+    scanned += sorted((ROOT / ".github").rglob("*.yml"))
+    scanned += sorted((ROOT / ".github").rglob("*.yaml"))
+    for f in scanned:
+        rel = f.relative_to(ROOT)
+        for m in stated.finditer(f.read_text(encoding="utf-8")):
+            if int(m.group(1)) != real:
+                r.fail("L24", f"{rel} says {m.group(1)} checks; {real} are implemented")
+
+
+def check_record_schema_closed(r: Report) -> None:
+    """L25 — the run-record schema must stay incapable of holding free text.
+
+    The privacy promise for field telemetry is not "we redact" — it is that a path, hostname or
+    finding description has **no field to occupy**. That property is worth exactly as much as
+    it is enforced, and it dies quietly: one `{"type": "string"}` added in a hurry to capture
+    "just the tool version" reopens the whole surface, and every existing test still passes.
+
+    So: every object closed, and every string constrained by enum, const or pattern. A schema
+    that cannot represent prose cannot leak it, which is a stronger guarantee than L19 (which
+    greps prose and says openly that it cannot read it).
+    """
+    path = ROOT / "schemas" / "run-record.schema.json"
+    if not path.exists():
+        return
+    try:
+        schema = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        r.fail("L25", f"run-record schema is not valid JSON: {e}")
+        return
+
+    def walk(node: object, where: str) -> None:
+        if not isinstance(node, dict):
+            return
+        is_object = node.get("type") == "object" or "properties" in node
+        if is_object and node.get("additionalProperties") is not False:
+            r.fail("L25", f"{where} is an object without additionalProperties:false — "
+                          "an unknown key would be accepted, which is how content arrives")
+        if node.get("type") == "string" and not (
+            "enum" in node or "const" in node or "pattern" in node
+        ):
+            r.fail("L25", f"{where} is an unconstrained string — this is a free-text field, "
+                          "and a free-text field can hold the user's work")
+        for key, child in node.get("properties", {}).items():
+            walk(child, f"{where}.{key}")
+        for key, child in node.get("definitions", {}).items():
+            walk(child, f"{where}#{key}")
+        if "items" in node:
+            walk(node["items"], f"{where}[]")
+
+    walk(schema, "run-record")
+
+
+PROOF_VOCAB: dict[str, set[str]] = {
+    "cluster": set(),  # filled from the clusters themselves — see below
+    "severity": {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"},
+    "disposition": {"accepted", "false_positive", "duplicate", "deferred",
+                    "wrong_severity", "not_reachable"},
+}
+
+
+def check_proof_entries(r: Report) -> None:
+    """L26 — proof entries must be well-formed and use the controlled vocabulary.
+
+    `proof/` answers "is this worth running?" the way `lessons/` answers "should I trust it?".
+    Both are contributed surfaces, so both need a shape a maintainer can check quickly. Free
+    text in a frontmatter field is where a repo name would land, and an unknown cluster prefix
+    means the entry cannot be counted in the ledger.
+    """
+    proof = ROOT / "proof"
+    if not proof.is_dir():
+        return
+    vocab = dict(PROOF_VOCAB)
+    vocab["cluster"] = {f"VIGIL-{p}" for p in cluster_prefixes()} | {"CORR"}
+
+    seen: dict[str, Path] = {}
+    for f in sorted(proof.glob("[0-9]*.md")):
+        text = f.read_text(encoding="utf-8")
+        m = re.match(r"^---\n(.*?)\n---", text, re.S)
+        if not m:
+            r.fail("L26", f"{f.name} has no frontmatter")
+            continue
+        fields = dict(re.findall(r"^([a-z_]+):\s*(.*)$", m.group(1), re.M))
+        for required in ("id", "date", "cluster", "severity", "class"):
+            if not fields.get(required, "").strip():
+                r.fail("L26", f"{f.name} is missing frontmatter field {required!r}")
+        for field, allowed in vocab.items():
+            value = fields.get(field, "").strip()
+            if value and value not in allowed:
+                r.fail("L26", f"{f.name}: {field}={value!r} is not in the controlled "
+                              f"vocabulary — free text here is where a real system lands")
+        pid = fields.get("id", "").strip()
+        if pid in seen:
+            r.fail("L26", f"{f.name} reuses id {pid!r} (also {seen[pid].name})")
+        seen[pid] = f
+        if not re.search(r"^## What generalises$", text, re.M):
+            r.fail("L26", f"{f.name} has no '## What generalises' section — without it the "
+                          "entry is an incident report, not proof of a class")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -751,6 +885,9 @@ def main() -> int:
     check_publish_placeholders(r)
     check_skill_loadable(r)
     check_assertion_evals(r)
+    check_stated_check_count(r)
+    check_record_schema_closed(r)
+    check_proof_entries(r)
     return r.emit()
 
 

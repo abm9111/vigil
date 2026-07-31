@@ -32,24 +32,32 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LESSONS = ROOT / "lessons"
+PROOF = ROOT / "proof"
 OUT = ROOT / "LEDGER.md"
 
 FM = re.compile(r"^---\n(.*?)\n---", re.S)
 FIELD = re.compile(r"^([a-z_]+):\s*(.*)$", re.M)
 
 
-def parse() -> list[dict[str, str]]:
+def parse_dir(d: Path) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
-    for f in sorted(LESSONS.glob("[0-9]*.md")):
-        m = FM.match(f.read_text(encoding="utf-8"))
+    if not d.is_dir():
+        return out
+    for f in sorted(d.glob("[0-9]*.md")):
+        text = f.read_text(encoding="utf-8")
+        m = FM.match(text)
         if not m:
             continue
-        d = dict(FIELD.findall(m.group(1)))
-        d["file"] = f.name
-        title = re.search(r"^# (.+)$", f.read_text(encoding="utf-8"), re.M)
-        d["title"] = title.group(1).strip() if title else f.stem
-        out.append(d)
+        entry = dict(FIELD.findall(m.group(1)))
+        entry["file"] = f.name
+        title = re.search(r"^# (.+)$", text, re.M)
+        entry["title"] = title.group(1).strip() if title else f.stem
+        out.append(entry)
     return out
+
+
+def parse() -> list[dict[str, str]]:
+    return parse_dir(LESSONS)
 
 
 # `found_by` / `missed_by` are a CONTROLLED VOCABULARY, not prose — prose belongs in
@@ -75,7 +83,45 @@ def label(agent: str) -> str:
     return AGENTS.get(agent, agent)
 
 
-def render(lessons: list[dict[str, str]]) -> str:
+def render_proof(entries: list[dict[str, str]]) -> list[str]:
+    """The other half of the record.
+
+    A project that publishes only its failures reads as unreliable; one that publishes only its
+    wins reads as marketing. Both sections are generated from committed files so neither can be
+    quietly dropped when it stops flattering.
+
+    The honest denominator is stated rather than implied: proof entries come from real
+    codebases, and for most of this project's life there were none.
+    """
+    lines: list[str] = []
+    a = lines.append
+    a("## Proof — found on real codebases")
+    a("")
+    if not entries:
+        a("_No entries. Every measurement in this repo so far comes from VIGIL auditing "
+          "itself, which is the weakest possible evidence about how it behaves on your code. "
+          "See [`proof/README.md`](proof/README.md)._")
+        a("")
+        return lines
+    a("Times VIGIL found something real on a codebase that was not its own. Entries name a "
+      "**class** of finding and never a system — see [`proof/README.md`](proof/README.md).")
+    a("")
+    novel = sum(1 for e in entries if e.get("missed_by_existing_tooling") == "true")
+    plural = "entry" if len(entries) == 1 else "entries"
+    a(f"**{len(entries)} {plural}** · {novel} missed by the project's existing tooling")
+    a("")
+    a("| Cluster | Severity | Tool | Missed by existing tooling | Finding class |")
+    a("|---|---|---|---|---|")
+    for e in sorted(entries, key=lambda x: x.get("file", "")):
+        novel_badge = "✅" if e.get("missed_by_existing_tooling") == "true" else "—"
+        a(f"| {e.get('cluster', '?')} | {e.get('severity', '?')} | "
+          f"`{e.get('tool', '?')}` | {novel_badge} | "
+          f"[{e.get('title', e['file'])}](proof/{e['file']}) |")
+    a("")
+    return lines
+
+
+def render(lessons: list[dict[str, str]], proof: list[dict[str, str]] | None = None) -> str:
     total = len(lessons)
     by_status = Counter(lesson.get("status", "?") for lesson in lessons)
     classes: dict[str, list[dict[str, str]]] = defaultdict(list)
@@ -158,11 +204,17 @@ def render(lessons: list[dict[str, str]]) -> str:
     a("✅ mechanized — a check now catches this class · ⏳ open — should be mechanized, is not")
     a("yet · 🚫 unmechanizable — genuinely not machine-checkable, with the reason in the lesson")
     a("")
+    lines.extend(render_proof(proof or []))
     a("## Contributing")
     a("")
     a("If you found VIGIL wrong, that is the contribution. Send the lesson, not a rule edit —")
     a("evidence is safe to accept from a stranger, an assertion about evidence is not. See")
     a("[`lessons/README.md`](lessons/README.md).")
+    a("")
+    a("If it found something real on your code, that is the other contribution — see")
+    a("[`proof/README.md`](proof/README.md). Neither one may contain your codebase: entries")
+    a("name a class, never a system. Run records are content-free by construction and stay on")
+    a("your machine unless you choose otherwise ([`engines/telemetry.md`](engines/telemetry.md)).")
     return "\n".join(lines) + "\n"
 
 
@@ -174,7 +226,7 @@ def main() -> int:
     if not LESSONS.is_dir():
         print("no lessons/ directory", file=sys.stderr)
         return 2
-    content = render(parse())
+    content = render(parse(), parse_dir(PROOF))
 
     if args.check:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
