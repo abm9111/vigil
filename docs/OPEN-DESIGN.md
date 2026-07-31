@@ -141,6 +141,95 @@ publish.
 
 ---
 
+## D6 — Preflight probes a tool's existence, not its environment
+
+**Status:** open · **Raised by:** [`lessons/0007`](../lessons/0007-instrument-outside-the-subject.md)
+
+Preflight asks "does a binary of this name run?" A tool resolved from outside the subject's
+environment answers yes, then reports on a project whose dependency graph it cannot see. With
+the usual "ignore unresolvable imports" flag set, every dependency-typed value degrades to a
+permissive type and the real errors vanish. The run exits 0 and reports less than the truth.
+
+This fails toward **clean**, which is the direction preflight exists to prevent. A missing tool
+is already loud; a misresolved one is silent.
+
+**Shape of the fix:** record the resolved absolute path per tool, and whether it lies inside the
+subject's environment (venv, node_modules, lockfile-managed toolchain). Treat "resolved outside
+the subject environment" as a coverage reduction — the same ceiling machinery as a missing tool
+— rather than a pass.
+
+**Done when:** the capability report prints the resolved path beside each tool, and a tool
+resolved outside the subject environment cannot contribute to a ceiling of 100.
+
+---
+
+## D7 — A compensating control is credited on inspection, never on execution
+
+**Status:** open · **Raised by:** [`lessons/0008`](../lessons/0008-control-present-not-effective.md)
+
+`RULES.md` Rule 3 says to check whether mitigations **exist** before reporting. A control that
+exists, is wired up, is reachable, and is wrong satisfies that test completely — and the
+resulting finding is understated rather than missed, which is harder to notice.
+
+**Shape of the fix:** when a finding's severity is reduced because a compensating control
+exists, require the report to cite an execution of that control — an observed input and its
+observed output. Absent that, the finding stands at its unmitigated severity. This is the same
+fence `RULES.md` Rule 7 already applies to reachability downgrades, generalised from CVEs to
+controls.
+
+**Done when:** Rule 3 says "execute" rather than "check if it exists", and a severity reduction
+citing a control with no execution evidence is rejected by the report format.
+
+---
+
+## D8 — Tool output alone is treated as sufficient evidence
+
+**Status:** open · **Raised by:** [`lessons/0009`](../lessons/0009-scanner-hit-is-a-pointer.md)
+
+Rule 1 ranks evidence with tool output at the top, which reads as "the highest available tier
+suffices." Scanners are correctly context-free: they report what one artefact says in isolation.
+The auditor's entire value over running the scanner directly is supplying the context the
+scanner cannot see, so a finding forwarded from tool output alone has added nothing while
+borrowing the scanner's authority.
+
+**Shape of the fix:** a finding whose evidence is solely tool output must also quote the source
+at the flagged location and state what that source says about the flag — including the case
+where it documents a deliberate exception. A scanner-derived finding that cannot show it read
+its target is downgraded to `NEEDS_REVIEW`.
+
+**Done when:** Rule 1 distinguishes "a tool flagged this location" from "this location is a
+finding", and the report format requires the second.
+
+---
+
+## D9 — The audited tree is never named
+
+**Status:** open · **Raised by:** [`lessons/0010`](../lessons/0010-which-tree-was-audited.md)
+
+`modes/*.md` head every report `{project} @ {commit_short}`, and `RULES.md` Rule 5 governs which
+directories to skip — but nothing establishes *which tree* is the subject. Working tree,
+tracked-at-HEAD and CI checkout are three different objects that answer the same question
+differently; one secret scan returned 32, 1 and 0 findings across them.
+
+A commit SHA in the header of an audit run against a dirty working tree is a reproducibility
+claim the report cannot honour. It also silently breaks Rule 10: a baseline delta that compares
+across tree kinds attributes uncommitted work to a code change.
+
+**Shape of the fix:** add a `Subject` line to the preflight block naming the tree and its state
+— e.g. `working tree (N tracked modified, M untracked-unignored)` or `tracked @ <sha> (clean)`.
+Permit a bare commit SHA in the header only when the working tree is clean; otherwise the header
+must say so. Count untracked-and-unignored files explicitly rather than letting them blend into
+source, since that population is outside review, outside CI, and one command from publication.
+
+**Also worth mechanising here:** ignore-aware search tools skip ignored paths by default, so
+adding a path to the ignore file removes it from subsequent sweeps. Secret and PII scans must
+run with ignore rules disabled, or a remediation will silently shrink detection coverage.
+
+**Done when:** no report can present a commit SHA as its subject while the tree it examined
+differs from that commit, and the egress cluster's scans are ignore-agnostic by construction.
+
+---
+
 ## Checks that would catch the classes above
 
 `evals/check_repo.py` runs 29 structural checks. Every one was added after a real gap got past
