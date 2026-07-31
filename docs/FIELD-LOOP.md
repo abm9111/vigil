@@ -18,12 +18,15 @@ privacy surface stops being hypothetical.
   2  .vigil/runs/<ts>.json          ← closed schema; content-free BY CONSTRUCTION
         │                             gitignored by their repo; never transmitted
         ▼
-  3  privacy_gate.py --dir           ← fails closed
-        │
+  3  THE ASK — the run is not over until this happens
+        │   "Share this run?  [n] no (default)  [s] show me  [y] yes"
+        │   enter = no · non-interactive = no · a decline is never re-asked
         ▼
-  4  learn.py --dir                  ← their own four signals (useful to them alone)
+  4  privacy_gate.py --dir           ← fails closed
         │
-        │   ......... a human decides to share. nothing automatic crosses this line .........
+  4b learn.py --dir                  ← their own four signals (useful to them alone)
+        │
+        │   ..... only a deliberate [y] crosses this line. nothing automatic does. .....
         │
         ▼
   5  corpus/<handle>.json  ──PR──▶   6  L27 + CI re-gate every bundle
@@ -98,10 +101,23 @@ rather than changing anything.
 
 ## Where the loop is allowed to stop
 
-Four places, all intentional:
+Five places, all intentional:
 
-**After step 4.** Most users never contribute. The local report is the value they get; the
-project gets nothing, and that is an acceptable default for a security tool.
+**At step 3 — the default.** The ask defaults to no, enter selects no, and a non-interactive
+session counts as no because there was nobody there to answer. A decline is recorded and never
+raised again in that repo.
+
+This is the stop that most runs take, and the design has to be genuinely comfortable with that
+rather than merely permitting it. Every mechanism downstream — the closed schema, the gate, the
+contributor floor — is worthless if the ask is engineered to be answered yes. So `[n]` comes
+first, silence picks it, and `[s]` prints the record **in full** rather than summarising it.
+That last one is only possible because the record is content-free and therefore short: a few
+dozen readable lines. A tool that says "anonymous usage data" and shows nothing is asking for
+trust it has not earned; this one can just show the file.
+
+**After step 4b.** Most users never contribute even after seeing the ask. The local report is
+the value they get; the project gets nothing, and that is an acceptable default for a security
+tool.
 
 **At step 6.** A bundle that fails the gate is rejected **whole**, not filtered. If one record
 smuggled a path, the submitter's redaction process is what failed, and keeping the clean ones

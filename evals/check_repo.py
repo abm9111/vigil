@@ -38,6 +38,8 @@ Checks:
   L25 the run-record schema stays closed — no free-text field can be added to it
   L26 proof entries are well-formed and use the controlled vocabulary
   L27 every contributed corpus bundle still passes the privacy gate
+  L28 the end-of-run consent contract is intact (default no, silence is not consent,
+      a decline is honoured, the record can be shown in full, there is an off switch)
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -886,6 +888,57 @@ def check_corpus_bundles(r: Report) -> None:
                 r.fail("L27", line.strip().lstrip("- "))
 
 
+# Each: (what it guarantees, pattern that must appear in engines/telemetry.md).
+# Prose, because the prompt is executed by a model reading this file — there is no function to
+# unit-test. That is a real limit and worth stating plainly: this check proves the instruction
+# is present and unambiguous, not that a given run obeyed it.
+CONSENT_CLAUSES: list[tuple[str, str]] = [
+    # Each alternative must be false when the guarantee is gone. An earlier version of this
+    # clause accepted a bare "default —", which still matched after the default was flipped to
+    # `[y] yes (default — nothing leaves this machine)`. The check passed while the guarantee
+    # was inverted, and its own mutation test passed for an unrelated reason. A loose
+    # alternative in a prose check is the same defect as a porous evidence gate (lessons/0005).
+    ("sharing defaults to no", r"default is no\b|\[n\][^\n]*\bdefault"),
+    ("silence is not consent", r"enter must select it|enter selects no|says nothing, nothing"),
+    ("non-interactive is not consent", r"non-interactive means no\b"),
+    ("a decline is honoured", r"is not asked\s*\n?again|honour a no|never re-asked"),
+    ("the user can see the exact record", r"prints the record in full|show me exactly"),
+    ("VIGIL does not transmit", r"does not transmit|no endpoint|never transmitted"),
+    ("there is an off switch", r"telemetry:\s*off"),
+]
+
+
+def check_consent_contract(r: Report) -> None:
+    """L28 — the end-of-run consent contract must survive edits to telemetry.md.
+
+    The whole field-learning design rests on one moment: the user is told a record exists and
+    asked, with `no` as the default, what to do with it. Every other control — closed schema,
+    privacy gate, contributor floor — is downstream of that and worthless without it.
+
+    It is also the easiest thing in the repo to erode, because each individual softening is
+    defensible in isolation: drop the disclosure because it is noisy, default to yes because
+    participation is low, treat `--ci` as consent because nobody is watching anyway. None of
+    those look like removing consent in a diff. This asserts each clause is still there.
+    """
+    path = ROOT / "engines" / "telemetry.md"
+    if not path.exists():
+        r.fail("L28", "engines/telemetry.md is missing — the consent contract lives there")
+        return
+    text = path.read_text(encoding="utf-8")
+    for guarantee, pattern in CONSENT_CLAUSES:
+        if not re.search(pattern, text, re.I):
+            r.fail("L28", f"telemetry.md no longer states that {guarantee} — if this was "
+                          "deliberate, the design changed and that is a conversation, "
+                          "not a commit")
+
+    # SKILL.md is what a model actually routes through, so the ask has to be visible there too.
+    # A contract documented only in the engine is a contract the router can skip.
+    skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+    if "telemetry.md" in skill and not re.search(r"ask|consent", skill, re.I):
+        r.fail("L28", "SKILL.md routes to telemetry.md without mentioning the ask — the "
+                      "router is what runs, so the consent step must be visible there")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -918,6 +971,7 @@ def main() -> int:
     check_record_schema_closed(r)
     check_proof_entries(r)
     check_corpus_bundles(r)
+    check_consent_contract(r)
     return r.emit()
 
 

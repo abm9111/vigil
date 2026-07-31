@@ -73,17 +73,79 @@ Not as a field, not appended to an enum, not encoded, not hashed:
 from one machine, and the input space is small enough to brute force. There is deliberately no
 run-id or install-id field for this reason: records aggregate, they do not correlate.
 
-## Asking the user
+## Ending a run: the consent contract
 
-Dispositions are the highest-value field and the only one requiring input. Ask once, at the end,
-and make declining free:
+**A run does not end until the user has been told a record exists and asked what to do with
+it.** Writing the file silently and leaving them to discover `privacy_gate.py` on their own is
+consent by omission — the exact pattern a security tool has no business shipping.
 
-> Three findings this run. Mark any as false positives so VIGIL can learn? (enter to skip)
+Four rules, none of them optional.
 
-Never ask *why* in free text. The answer would be the most useful sentence in the record and
-the most likely to name their system — which is precisely the trade `lessons/0006` says not to
-make. The "why" belongs in a lesson the user writes deliberately, having read
-[`../lessons/README.md`](../lessons/README.md).
+### 1. Disclose on first write, in that repo
+
+The first time a record is written to a repo, say so before anything else:
+
+> Wrote a run record to `.vigil/runs/` — counts and cluster verdicts only, no paths or
+> findings. It stays on this machine; VIGIL has no network path for it.
+> Add `.vigil/` to `.gitignore`, or turn this off with `.vigil/telemetry: off`.
+
+Once per repo, not once per run. A disclosure repeated every time is noise, and noise is how
+people learn to skip the thing you most want them to read.
+
+### 2. Ask for dispositions — this helps them, not us
+
+> 3 findings. Mark any as false positives? VIGIL uses this to stop repeating them. (enter to skip)
+
+Ask once, at the end, and make declining free. Never ask *why* in free text: the answer would
+be the most useful sentence in the record and the most likely to name their system, which is
+precisely the trade `lessons/0006` says not to make. The why belongs in a lesson the user
+writes deliberately, having read [`../lessons/README.md`](../lessons/README.md).
+
+### 3. Ask about sharing — separately, and never by default
+
+Dispositions are local. Sharing is an export, and it is a **different question** that must be
+asked as one:
+
+> Share this run with the VIGIL project? It becomes a public file in `corpus/` under your
+> GitHub handle.
+>   [n] no  (default — nothing leaves this machine)
+>   [s] show me exactly what would be sent
+>   [y] yes, prepare a bundle I can attach to a PR
+
+**The default is no, and enter must select it.** If the user says nothing, nothing is shared.
+
+**`[s]` prints the record in full**, not a summary and not a description of the categories. The
+record is a few dozen lines precisely because it is content-free, so informed consent here is
+achievable in a way it never is for real telemetry — the user can read every byte in under a
+minute. A tool that says "anonymous usage data" and shows nothing is asking for trust it has
+not earned; this one can just show the file.
+
+**`[y]` does not transmit anything.** It writes a bundle and prints the two commands the user
+runs themselves. VIGIL has no endpoint and no credential; the transport is a pull request the
+user opens, reviews and can abandon.
+
+### 4. Ask at most once per run, and honour a no
+
+A decline is recorded in `.vigil/telemetry.json` as `"share": "never"` and **is not asked
+again** in that repo. Re-prompting someone who already declined is nagging, and nagging is how
+a consent dialog becomes a dark pattern with a clean conscience.
+
+`.vigil/telemetry: off` disables record writing entirely, including the disclosure. That
+setting is checked before step 1 of this engine, not after.
+
+## What must never happen
+
+Each of these is a normal, defensible product decision somewhere else, and none of them are
+available here:
+
+- writing a record **after** the user set `telemetry: off`, for any reason including "just this
+  diagnostic one"
+- treating silence, `--yes`, `--ci` or a non-interactive session as consent to share —
+  **non-interactive means no**, because there was nobody there to ask
+- asking again after a `never`
+- sharing anything at a moment the user did not initiate
+- summarising the record instead of showing it when they ask to see it
+- making `[y]` easier to reach than `[n]`, including by ordering, wording or emphasis
 
 ## Reading the result back
 

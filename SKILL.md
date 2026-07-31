@@ -65,9 +65,12 @@ For ANY `/vigil` invocation:
 9. **AI reasoning SECOND** — interpret, correlate, prioritize tool output
 10. **Score and report** — per [engines/scoring.md](engines/scoring.md). Apply severity floors
     and evidence ceilings; never emit a pass verdict while a cluster is N/E.
-11. **Write a run record** — per [engines/telemetry.md](engines/telemetry.md). One content-free
-    JSON file in the audited repo's own `.vigil/runs/`. Local only; **never transmitted**. This
-    is what lets VIGIL learn from real use without ever ingesting the user's work.
+11. **Write a run record, then ask** — per [engines/telemetry.md](engines/telemetry.md). One
+    content-free JSON file in the audited repo's own `.vigil/runs/`. Local only; **never
+    transmitted.** The run is **not finished** until the user has been told the record exists
+    and asked whether to share it — default **no**, enter selects no, a non-interactive session
+    counts as no, and a decline is never re-asked. Sharing writes a bundle the user attaches to
+    a PR themselves; VIGIL has no endpoint.
 
 ## Flag Quick Reference
 

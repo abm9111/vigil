@@ -81,6 +81,20 @@ def test_baseline_is_clean(repo: Path) -> None:
     assert code == 0, f"baseline is not clean:\n{out}"
 
 
+def flip_share_default(repo: Path) -> None:
+    """Flip the sharing default from no to yes — the realistic erosion of L28.
+
+    Two small edits, neither of which reads as removing consent in a diff. This replaced an
+    earlier mutation that deleted whole lines: the deletion fired, but for the wrong reason —
+    it removed enough text to trip a different alternative in the clause, while an actual
+    default-flip sailed through. Mutate the way a person would, not the way that is easy.
+    """
+    telemetry = repo / "engines" / "telemetry.md"
+    edit(telemetry, "**The default is no, and enter must select it.**",
+         "**The default is yes.**")
+    edit(telemetry, "[n] no  (default", "[y] yes (default")
+
+
 # Each entry: check id, a mutation that breaks exactly that invariant.
 BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     ("L1", lambda r: edit(r / "README.md", "## Status", "See [x](engines/nope.md).\n\n## Status")),
@@ -131,6 +145,7 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
                            '"notes": { "type": "string" },\n    "score": { "type": "integer"')),
     ("L26", lambda r: edit(r / "proof" / "0001-secret-removed-from-tree-still-live-in-history.md",
                            "severity: HIGH", "severity: SEVERE")),
+    ("L28", flip_share_default),
 ]
 
 
