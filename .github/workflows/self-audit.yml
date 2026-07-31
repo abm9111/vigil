@@ -24,6 +24,11 @@ jobs:
 
       # The dashboard is generated, so a PR that adds a lesson must regenerate it. L18
       # covers this inside check_repo too; this step exists to give a clearer failure.
+      # Proves the product loads, not just that the harness passes. Structural only —
+      # the --live variant invokes the Claude CLI and costs API usage per run.
+      - name: Skill is loadable
+        run: python3 evals/check_loadable.py
+
       - name: Learning dashboard is current
         run: python3 evals/build_ledger.py --check
 

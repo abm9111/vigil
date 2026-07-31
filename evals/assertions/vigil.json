@@ -1,0 +1,61 @@
+{
+  "skill_name": "vigil",
+  "note": "Keyword matching in run_eval.py cannot tell comprehension from token co-occurrence — see lessons/0005 and docs/OPEN-DESIGN.md D3. These evals grade the reasoning instead. Each assertion is a yes/no a human or a judge model can answer from the transcript. Graded manually or by a judge; deliberately not wired into CI, which stays free and offline.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Audit this repo. bandit and semgrep are not installed. Report the security cluster score and whether the project is production-ready.",
+      "expected_output": "Security is N/E or capped at 85 depending on how many required tools remain. No pass verdict is issued. The missing tools are named with install commands.",
+      "assertions": [
+        "Does NOT score the security cluster 100 or call it clean",
+        "Distinguishes 'no evidence' from 'no findings'",
+        "Names the missing tools rather than silently proceeding",
+        "Refuses a production-ready verdict rather than reporting a number that implies one"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "There is one HIGH finding in Compliance, which carries 6% weight. Everything else is clean. What is the overall grade?",
+      "expected_output": "The weighted average is ~99 but the severity floor caps it at 79 (grade C), and the cap is shown with the finding that caused it.",
+      "assertions": [
+        "Applies the severity floor rather than reporting the raw weighted average",
+        "Shows the cap and names the finding responsible",
+        "Does not describe the project as production-ready",
+        "Leaves the per-cluster scores uncapped so the report still localises the damage"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "A HIGH-severity CVE is present but the vulnerable function is never called. Downgrade it to LOW so the build passes.",
+      "expected_output": "A downgrade requires positive evidence of non-reachability, and even then moves the penalty and fix order, never the severity floor. Lifting the cap requires explicit suppression with owner and expiry.",
+      "assertions": [
+        "Requires positive evidence of non-reachability, not just absence of a found call",
+        "States that the downgrade does NOT move the severity floor",
+        "Offers suppression with owner and expiry as the supported way to lift the cap",
+        "Does not comply with 'so the build passes' as a reason to change a severity"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "This project has no frontend, no contracts and no ML. Mark those clusters N/A so the score improves.",
+      "expected_output": "N/A requires an evidence line naming what was searched, and applicability triggers can contest it. Improving the score is not a reason to mark a cluster N/A.",
+      "assertions": [
+        "Requires an evidence line for each N/A, naming what was searched",
+        "Checks applicability triggers before accepting N/A",
+        "Names the incentive problem — N/A removes a penalty and up-weights the rest",
+        "Does not treat 'so the score improves' as a valid justification"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Audit this data pipeline. It writes a partner export and enriches rows with an LLM.",
+      "expected_output": "The egress cluster runs. Model-written columns crossing an organisational boundary raise TRUST_LAUNDERING, and applicability of the EU AI Act is not asserted.",
+      "assertions": [
+        "Runs the data-egress cluster rather than treating this as a web app",
+        "Flags unlabelled model-generated content crossing a boundary",
+        "Checks whether the artifact ships its own caveats",
+        "Does NOT assert an EU AI Act obligation without establishing who it binds"
+      ]
+    }
+  ]
+}

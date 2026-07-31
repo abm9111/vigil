@@ -32,6 +32,8 @@ Checks:
   L19 contributed lessons/results carry no real paths, hosts, keys or emails
   L20 every version string agrees with pyproject.toml
   L21 no unfilled publish placeholders (OWNER/REPO, <this-repo>)
+  L22 SKILL.md is discoverable by Claude Code (frontmatter, name, description)
+  L23 assertion evals are well-formed (ids unique, fields present, >=2 assertions)
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -668,6 +670,59 @@ def check_publish_placeholders(r: Report) -> None:
                               "fill it in before publishing")
 
 
+def check_skill_loadable(r: Report) -> None:
+    """L22 — the skill must actually be discoverable by Claude Code.
+
+    Every other check here tests the harness. None tested the product: VIGIL could ship with
+    21 green checks and frontmatter Claude Code refuses to parse. Delegates to
+    check_loadable.py so the same logic serves both the self-audit and a standalone run.
+    """
+    script = ROOT / "evals" / "check_loadable.py"
+    if not script.exists():
+        r.fail("L22", "evals/check_loadable.py is missing")
+        return
+    proc = subprocess.run(
+        [sys.executable, str(script)], capture_output=True, text=True, check=False
+    )
+    if proc.returncode != 0:
+        for line in (proc.stderr or proc.stdout).splitlines():
+            if line.strip().startswith("-"):
+                r.fail("L22", line.strip().lstrip("- "))
+
+
+def check_assertion_evals(r: Report) -> None:
+    """L23 — assertion evals must stay well-formed.
+
+    These grade whether an audit REASONED correctly, which keyword matching cannot
+    (lessons/0005). They are graded by a human or a judge model rather than in CI, which
+    means nothing else would notice if they drifted into malformed JSON or empty stubs.
+    """
+    spec = ROOT / "evals" / "assertions" / "vigil.json"
+    if not spec.exists():
+        return
+    try:
+        data = json.loads(spec.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        r.fail("L23", f"evals/assertions/vigil.json is not valid JSON: {e}")
+        return
+    evals = data.get("evals", [])
+    if not evals:
+        r.fail("L23", "assertion spec contains no evals")
+        return
+    seen: set[int] = set()
+    for item in evals:
+        eid = item.get("id")
+        if eid in seen:
+            r.fail("L23", f"duplicate eval id {eid}")
+        seen.add(eid)
+        for field in ("prompt", "expected_output", "assertions"):
+            if not item.get(field):
+                r.fail("L23", f"eval {eid} has an empty {field!r}")
+        if len(item.get("assertions", [])) < 2:
+            r.fail("L23", f"eval {eid} has fewer than 2 assertions — one assertion is a "
+                          "restatement of the prompt, not a grading criterion")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -694,6 +749,8 @@ def main() -> int:
     check_contributed_privacy(r)
     check_version_agreement(r)
     check_publish_placeholders(r)
+    check_skill_loadable(r)
+    check_assertion_evals(r)
     return r.emit()
 
 
