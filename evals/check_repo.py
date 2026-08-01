@@ -548,6 +548,10 @@ ALLOWED_HOSTS = {
     "foundry.paradigm.xyz", "bandit.readthedocs.io", "claude.com", "evil.com",
     "meridian-holdings.example", "northwind.example", "old.example.com",
     "new.example.com", "moonshot.cn",
+    # The Cache Directory Tagging Specification. Cited in a real audit as the reason a
+    # detect-secrets hit was withdrawn: the flagged string is the magic constant every
+    # CACHEDIR.TAG contains, published in the spec, authenticating nothing.
+    "bford.info",
 }
 
 LEAK_PATTERNS = (
@@ -581,15 +585,23 @@ def check_contributed_privacy(r: Report) -> None:
     citation than let one real hostname through.
     """
     surfaces = [p for p in (ROOT / "lessons").glob("*.md")]
-    results = ROOT / "evals" / "results"
-    if results.is_dir():
-        surfaces += list(results.glob("*.md"))
+    # BOTH extensions, everywhere. Scanning only `*.md` left the JSON artifacts a real audit
+    # actually emits unscanned — and those are the ones that carry resolved tool paths, so
+    # `evals/results/*.json` shipped the maintainer's home directory nine times while this
+    # check reported the directory clean. The prose a human writes is the surface that gets
+    # reviewed; the machine-written artifact beside it is the one that leaks. lessons/0013.
+    def contributed(d: Path) -> list[Path]:
+        return sorted(d.glob("*.md")) + sorted(d.glob("*.json")) if d.is_dir() else []
+
+    surfaces += contributed(ROOT / "evals" / "results")
     # proof/ is the third contributed surface, and the one most likely to leak: an entry
     # showing VIGIL caught something real is *trying* to be impressive, and specificity is
     # what makes a war story impressive.
-    proof = ROOT / "proof"
-    if proof.is_dir():
-        surfaces += list(proof.glob("*.md"))
+    surfaces += contributed(ROOT / "proof")
+    # corpus/ bundles are machine-written and public forever once merged. L27 re-runs the
+    # privacy gate over them; that validates them against the schema, which is a different
+    # question from whether their free-text fields name somebody.
+    surfaces += contributed(ROOT / "corpus")
 
     # A hostname needs a real TLD. Matching "anything.anything" flagged `numpy.ndarray`,
     # `date.today` and the version string `2.3` as hosts — noise that would train a
@@ -639,7 +651,15 @@ def check_version_agreement(r: Report) -> None:
         r.fail("L20", "pyproject.toml declares no version")
         return
     want = m.group(1)
-    for f in md_files():
+    # `lessons/`, `proof/` and CHANGELOG.md are exempt, on exactly the grounds L24 states: they
+    # are historical records, and correcting a number inside one falsifies the record it exists
+    # to keep. The trigger was a lesson quoting a real artifact whose `"version"` field belongs
+    # to a scanner, not to VIGIL — third-party JSON is not a claim about our version, and
+    # editing quoted evidence to satisfy a check is the failure this project names elsewhere.
+    scanned = [f for f in md_files()
+               if f.relative_to(ROOT).parts[0] not in ("lessons", "proof")
+               and f.name != "CHANGELOG.md"]
+    for f in scanned:
         for found in re.findall(r'"(?:vigil_)?version": "(\d+\.\d+\.\d+)"',
                                 f.read_text(encoding="utf-8")):
             # SARIF's own schema version is not ours.

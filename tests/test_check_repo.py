@@ -129,6 +129,12 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     ("L19", lambda r: edit(r / "lessons" / "0001-checker-clean-over-real-gaps.md",
                            "## What was believed",
                            "Seen at /Users/alice/work/acme/src.\n\n## What was believed")),
+    # The JSON half. The pattern always caught a home directory; it never ran on the machine
+    # -written artifact that actually carries one, so nine real ones shipped (lessons/0013).
+    ("L19", lambda r: edit(r / "evals" / "results" /
+                           "audit-clean-control-20260801T134016Z.json",
+                           '"path": "<ambient-env>/bin/ruff"',
+                           '"path": "/Users/alice/env/bin/ruff"')),
     ("L20", lambda r: edit(r / "engines" / "ci-adapter.md",
                            '"vigil_version": "0.5.0"', '"vigil_version": "9.9.9"')),
     ("L22", lambda r: edit(r / "SKILL.md", "name: vigil", "nom: vigil")),
