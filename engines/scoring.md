@@ -216,8 +216,14 @@ Rules:
   and it holds the cap until it is *resolved*: confirmed at a real severity, withdrawn under
   Rule 3's false-positive test, or accepted with an owner and an expiry like any other cap
   lift.
-- Correlated findings apply at their **correlated** severity (per Rule 7), not their
-  constituents'.
+- Correlated findings apply at their **correlated** severity for the *penalty* (per Rule 7),
+  not their constituents'. **The cap is the exception, and it goes the other way:** per Rule
+  7's fence, a correlation that lands *below* its constituents — only
+  `DEPENDENCY_AND_REACHABILITY` may — still holds the cap computed from the **constituent's**
+  severity. Reachability reorders the work; it does not turn an unresolved HIGH into a pass.
+  Reading this bullet as "the correlated severity sets the cap" reopens the floor exploit Rule
+  7 exists to close, which is why the exception is stated here rather than left to the
+  cross-reference.
 - Per-cluster scores are **not** capped. They stay uncapped so the report still shows *where*
   the damage is; only the headline verdict is gated.
 

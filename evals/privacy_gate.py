@@ -49,8 +49,16 @@ class GateError(Exception):
     """Anything that means the record cannot be cleared."""
 
 
-def _resolve(schema: dict[str, Any], root: dict[str, Any]) -> dict[str, Any]:
-    """Follow a local $ref. Only '#/...' pointers are supported; anything else fails closed."""
+def _resolve(schema: dict[str, Any], root: dict[str, Any], _depth: int = 0) -> dict[str, Any]:
+    """Follow local $refs to a concrete schema. Only '#/...' pointers; anything else fails closed.
+
+    Resolves REPEATEDLY. The single-step version left a `$ref` key on the returned node, and
+    `$ref` is in KNOWN, so the unknown-keyword guard stayed silent and the node was validated
+    as if it constrained nothing — a chained ref admitted arbitrary content while the module
+    docstring promised fail-closed. Found by cross-model review, not by 33 checks and 119 tests.
+    """
+    if _depth > 16:
+        raise GateError("$ref chain deeper than 16 — refusing to keep dereferencing")
     ref = schema.get("$ref")
     if not ref:
         return schema
@@ -63,7 +71,7 @@ def _resolve(schema: dict[str, Any], root: dict[str, Any]) -> dict[str, Any]:
         node = node[part]
     if not isinstance(node, dict):
         raise GateError(f"$ref {ref!r} does not point at a schema object")
-    return node
+    return _resolve(node, root, _depth + 1) if "$ref" in node else node
 
 
 # Keywords this validator understands. An unknown keyword in the schema means the schema is
@@ -83,6 +91,13 @@ TYPES: dict[str, type | tuple[type, ...]] = {
 def validate(node: Any, schema: dict[str, Any], root: dict[str, Any], path: str) -> list[str]:
     schema = _resolve(schema, root)
     errs: list[str] = []
+
+    # A node that constrains nothing accepts everything. `{}` as a property schema is the
+    # cheapest possible hole in a "content is unrepresentable" claim, and it looks like an
+    # oversight rather than a hole in review.
+    if not (set(schema) - {"description", "title", "$schema", "$id"}):
+        raise GateError(f"{path}: schema node constrains nothing ({schema!r}) — a value here "
+                        "would be unvalidated, which defeats the closed-schema guarantee")
 
     unknown = set(schema) - KNOWN
     if unknown:
@@ -117,8 +132,12 @@ def validate(node: Any, schema: dict[str, Any], root: dict[str, Any], path: str)
             errs.append(f"{path}: expected {'/'.join(names)}, got {type(node).__name__}")
             return errs  # structure is wrong; deeper checks would be noise
 
-    if isinstance(node, str) and "pattern" in schema and not re.search(schema["pattern"], node):
-        errs.append(f"{path}: {node!r} does not match {schema['pattern']!r}")
+    # fullmatch, not search: `[a-z]+` under search accepts
+    # "/Users/alice/secret ALL THE CONTENT" because a fragment matches. A pattern is a
+    # constraint on the WHOLE value or it is not a constraint.
+    if (isinstance(node, str) and "pattern" in schema
+            and not re.fullmatch(schema["pattern"], node)):
+        errs.append(f"{path}: {node!r} does not match {schema['pattern']!r} (full match)")
 
     if isinstance(node, (int, float)) and not isinstance(node, bool):
         if "minimum" in schema and node < schema["minimum"]:

@@ -166,6 +166,43 @@ def test_leak_scan_is_quiet_on_a_clean_record() -> None:
     assert scan_leaks(json.dumps(clean_record())) == []
 
 
+# ── holes found by cross-model review, each verified open before the fix ──────────────────
+
+
+def test_unanchored_pattern_cannot_accept_a_superset() -> None:
+    """`re.search` let `[a-z]+` accept a path plus arbitrary text — a fragment matched."""
+    s = {"type": "object", "additionalProperties": False,
+         "properties": {"x": {"type": "string", "pattern": "[a-z]+"}}}
+    assert validate({"x": "/Users/alice/secret ALL THE CONTENT"}, s, s, "r")
+
+
+def test_a_schema_node_constraining_nothing_fails_closed() -> None:
+    """`{}` as a property schema is the cheapest hole in a closed-schema claim, and it reads
+    as an oversight rather than a hole in review."""
+    s = {"type": "object", "additionalProperties": False, "properties": {"x": {}}}
+    with pytest.raises(GateError, match="constrains nothing"):
+        validate({"x": "arbitrary free text"}, s, s, "r")
+
+
+def test_chained_ref_resolves_rather_than_failing_open() -> None:
+    """A single-step _resolve left `$ref` on the node; `$ref` is in KNOWN, so nothing
+    complained and the node validated as if it constrained nothing — failing OPEN while the
+    docstring promised fail-closed."""
+    s = {"type": "object", "additionalProperties": False,
+         "properties": {"x": {"$ref": "#/definitions/a"}},
+         "definitions": {"a": {"$ref": "#/definitions/b"}, "b": {"enum": ["ok"]}}}
+    assert validate({"x": "anything at all"}, s, s, "r")
+    assert validate({"x": "ok"}, s, s, "r") == []
+
+
+def test_ref_cycle_fails_closed() -> None:
+    s = {"type": "object", "additionalProperties": False,
+         "properties": {"x": {"$ref": "#/definitions/a"}},
+         "definitions": {"a": {"$ref": "#/definitions/b"}, "b": {"$ref": "#/definitions/a"}}}
+    with pytest.raises(GateError, match="deeper than"):
+        validate({"x": "y"}, s, s, "r")
+
+
 # ---------------------------------------------------------------- bundles (multi-contributor)
 
 

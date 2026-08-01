@@ -54,10 +54,21 @@ main() {
       "$REPO_URL"|\
       https://github.com/abm9111/vigil.git|https://github.com/abm9111/vigil|\
       git@github.com:abm9111/vigil.git|ssh://git@github.com/abm9111/vigil.git)
+        # NEVER reset --hard over someone's work. The clobber guard above protects a
+        # non-VIGIL directory; this path is where a CONTRIBUTOR's own checkout lives, and
+        # `reset --hard` would silently delete exactly the uncommitted work the guard's
+        # comment claims to care about. Refuse and let them decide.
+        if ! git -C "$SKILL_DIR" diff --quiet HEAD 2>/dev/null \
+           || [ -n "$(git -C "$SKILL_DIR" ls-files --others --exclude-standard)" ]; then
+          die "$SKILL_DIR has uncommitted changes. Refusing to update over them.
+    Commit, stash or move them, then re-run. Nothing has been modified."
+        fi
         say "updating existing install at ${D}${SKILL_DIR}${N}"
         git -C "$SKILL_DIR" fetch --quiet origin "$BRANCH"
         git -C "$SKILL_DIR" checkout --quiet "$BRANCH"
-        git -C "$SKILL_DIR" reset --hard --quiet "origin/$BRANCH" ;;
+        git -C "$SKILL_DIR" merge --ff-only --quiet "origin/$BRANCH" \
+          || die "$SKILL_DIR has diverged from origin/$BRANCH and cannot fast-forward.
+    Your history is intact; resolve it with git, or move the directory aside." ;;
       *) die "$SKILL_DIR tracks ${origin:-an unknown remote}, which is not VIGIL.
     Refusing to reset --hard against it. Move it aside, or set VIGIL_DIR." ;;
     esac

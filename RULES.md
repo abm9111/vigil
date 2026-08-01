@@ -149,7 +149,10 @@ For each cluster, run deterministic tools BEFORE applying AI reasoning:
 
 - Only audit files in the target directory (or git diff for watch/diff modes)
 - Never audit node_modules/, .venv/, vendor/, dist/, build/, .git/
-- Respect .gitignore unless explicitly told otherwise
+- Respect .gitignore unless explicitly told otherwise — **except for secret and PII scans**,
+  which run ignore-agnostic per Rule 10a. Hardening a repo by adding a directory to
+  `.gitignore` must not shrink the scanner's field of view; that is how remediation and
+  detection end up moving in opposite directions.
 - Respect `--only` and `--ignore` flags absolutely
 
 ## Rule 6: Finding IDs
