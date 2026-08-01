@@ -6,7 +6,7 @@
 
 | Code | Meaning | When |
 |------|---------|------|
-| 0 | Pass | Nothing at or above the blocking severity **and** no cluster is N/E |
+| 0 | Pass | Nothing at or above the blocking severity, no cluster is N/E, **and no cluster is below ceiling 100** |
 | 1 | Fail | CRITICAL or HIGH findings present (or MEDIUM+ with --strict) |
 | 2 | Error | Tool execution failed, configuration error, **or an applicable cluster had no evidence (N/E)** |
 
@@ -31,8 +31,15 @@ look. To run anyway, the operator must explicitly narrow scope with `--only` —
 line is not an artifact. The reduced coverage is a recorded decision only once it reaches the
 machine output, which is why `scope` is a required field below.
 
-**Partial evidence** (some required tools missing, cluster ceiling 85) does not gate the exit
-code — it caps the score and appears in the capability report. Only *zero* evidence is fatal.
+**Partial evidence** (some required tools missing, cluster ceiling 85) is **not exit 0**.
+`engines/scoring.md` is the authority and says a cluster below full coverage yields
+"INCOMPLETE — evidence partial", *never a pass, no matter how good the number looks*. This
+table used to exempt partial evidence from the exit code, so a run every cluster of which was
+at 85 turned an INCOMPLETE verdict into a green pipeline — the same lie as scoring an
+unexamined cluster 100, one notch quieter.
+
+Partial evidence exits **1** (incomplete, actionable: install the tool and re-run). Zero
+evidence stays **2** (the run could not look at all). Both name the missing tool.
 
 **Relationship to rule 5 below:** rule 5 covers a tool that ran and crashed. This covers a tool
 that was never there. Both exit 2; both must name the tool.

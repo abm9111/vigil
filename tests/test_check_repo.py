@@ -155,6 +155,11 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
                            '"partial_score": { "type": "integer"',
                            '"notes": { "type": "string" },\n    '
                            '"partial_score": { "type": "integer"')),
+    # The BUNDLE schema, which L25 did not walk at all: it describes the artifact that lands
+    # in the public corpus/, so an unconstrained string here is the same hole one layer out.
+    ("L25", lambda r: edit(r / "schemas" / "bundle.schema.json",
+                           '"properties": {',
+                           '"properties": {\n    "notes": { "type": "string" },')),
     # Drop a prefix RULES.md defines. A real run emitting it would be silently blocked by the
     # privacy gate — which is exactly what happened before L29 existed.
     ("L29", lambda r: edit(r / "schemas" / "run-record.schema.json",
@@ -189,6 +194,12 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
                            "\nlint:\n\truff check evals/*.py tests/*.py")),
     # The half no command comparison catches: identical commands, different environment.
     ("L34", lambda r: edit(r / "Makefile", 'PATH="$$(python3', 'NOPATH="$$(python3')),
+    # Delete a step from the MERGE gate. `make check` still runs it, so the local gate is
+    # stronger than the one that blocks a PR — and the one-directional version of L34 was
+    # silent here. Note `mypy` still appears in the pip-install line, which is why the check
+    # compares commands rather than file text.
+    ("L34", lambda r: edit(r / ".github" / "workflows" / "self-audit.yml",
+                           "      - name: Type-check the harnesses\n        run: mypy\n", "")),
     # The exact edit that turned the gate off: swap the branch filter for a tag one. Reads in
     # a diff as "stop re-running on tags" and means "stop running".
     ("L35", lambda r: edit(r / ".github" / "workflows" / "self-audit.yml",

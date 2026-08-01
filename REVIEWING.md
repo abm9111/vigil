@@ -4,10 +4,10 @@ You have been invited to review this before it goes public. This page exists so 
 useful in ten minutes instead of an hour, and so you do not spend that hour re-finding things
 that are already known.
 
-**What would help most: find a thirteenth defect.** Three cross-model reviews have found ten
-between them with almost no overlap, plus two found by attacking the checks directly. The
-automated suite found **none** of the twelve. The discovery rate has not dropped across three
-rounds, so the working assumption is that more exist.
+**What would help most: find a nineteenth defect.** Four cross-model reviews have found
+sixteen between them with almost no overlap, plus two found by attacking the checks directly.
+The automated suite found **none** of the eighteen. Four rounds, no decline in yield — so the
+working assumption is that more exist.
 
 ## Orient in two minutes
 
@@ -30,11 +30,13 @@ make help         # every target
 
 ## Already reviewed — please do not re-find these
 
-Three sandboxed cross-model reviews ran 2026-08-01 (Grok, Kimi, GPT-5.5). All findings are
+Four sandboxed cross-model reviews ran 2026-08-01 (Grok, Kimi, GPT-5.5, then Kimi again via
+the scheduled job). All findings are
 fixed, each with a regression test. Write-ups in
 [`evals/results/2026-08-01-cross-model-review.md`](evals/results/2026-08-01-cross-model-review.md)
+[`evals/results/2026-08-01-third-model-review.md`](evals/results/2026-08-01-third-model-review.md)
 and
-[`evals/results/2026-08-01-third-model-review.md`](evals/results/2026-08-01-third-model-review.md).
+[`evals/results/2026-08-01-fourth-model-review.md`](evals/results/2026-08-01-fourth-model-review.md).
 
 Already closed: two rule-composition holes (Rule 1a vs 3a, Rule 3a vs Rule 7's floor fence),
 four leaky prose-check patterns, a gameable check count, three privacy-gate holes that failed
@@ -55,6 +57,10 @@ Reporting these is not useful; they are stated in `docs/OPEN-DESIGN.md` on purpo
   repo. Not a path leak; residual, and not yet written down.
 - **`L28` cannot prove obedience.** It proves the consent instruction is *stated*. The one real
   run wrote its record, disclosed it, and never asked the question.
+- **Prose checks detect drift, not subversion — `D10`.** A countermanding sentence *after* a
+  clause, or a negation beyond the 260-character window, still reverses a rule with its check
+  green. Confirmed twice. It is a string matcher and the property is meaning; widening the
+  window only moves the next variant further away.
 - **Prose checks have a convention, not a fix.** Nine instances of the same silent-green
   failure so far. See "Mutating a prose check" in [`AGENTS.md`](AGENTS.md).
 

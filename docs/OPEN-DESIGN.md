@@ -232,6 +232,39 @@ finding", and the report format requires the second.
 
 ---
 
+## D10 — A prose check cannot prove a rule is in force
+
+**Status: open, and probably not closeable. Do not report it as a defect.**
+
+`L28`, `L30`–`L33` and `L36` assert that a rule is still *stated* in a Markdown file. There is
+no function to unit-test: the rule is executed by a model reading the file.
+
+`lessons/0014` records that the fragment form of these checks was satisfied by **quoting** a
+rule instead of asserting it — both by splicing a reversal into the middle of the sentence, and
+by preserving the sentence verbatim and demoting it to "what earlier versions said". The
+consent contract was flipped to opt-out with all eight of its clauses green.
+
+The fix made a clause a whole sentence that must appear verbatim, beginning a sentence, with no
+negating language in the preceding 260 characters. **That is strictly better and still not
+proof.** The fourth review round confirmed two residual defeats within hours:
+
+- a countermanding sentence placed **after** the clause rather than before it
+- a negation further back than the 260-character window
+
+Both are real. Neither is closeable by widening the window, because the next variant is always
+one sentence further away — the check is a string matcher and the property is meaning.
+
+**What it does buy:** ordinary documentation drift, which produced every instance found so far,
+now fails loudly. Reversing a rule requires *deleting* the sentence that states it, and a
+deletion is visible in review in a way a quotation is not.
+
+**What would actually close it:** a semantic comparison — a model asked "does this file still
+require X?" — which is a different kind of check with a different failure mode, and one this
+repo cannot run offline in under a second. Until then the honest position is that these checks
+detect drift, not subversion, and `AGENTS.md` says so where authors will read it.
+
+Reported by cross-model review twice. Recorded here so a third report can be closed as known.
+
 ## D9 — The audited tree is never named
 
 **Status:** MECHANIZED 2026-07-31 as `L33` (Rule 10a) + `tree_state` in the record · **Raised by:** [`lessons/0010`](../lessons/0010-which-tree-was-audited.md)

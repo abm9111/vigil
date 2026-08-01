@@ -916,14 +916,13 @@ def check_record_schema_closed(r: Report) -> None:
     that cannot represent prose cannot leak it, which is a stronger guarantee than L19 (which
     greps prose and says openly that it cannot read it).
     """
-    path = ROOT / "schemas" / "run-record.schema.json"
-    if not path.exists():
-        return
-    try:
-        schema = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
-        r.fail("L25", f"run-record schema is not valid JSON: {e}")
-        return
+    schemas = [ROOT / "schemas" / "run-record.schema.json",
+               # bundle.schema.json too. It was unwalked, and it is the schema of the artifact
+               # that actually lands in the public `corpus/` — adding `"notes": {"type":
+               # "string"}` there put arbitrary prose through the gate with zero errors and
+               # zero leak hits, and survived L27's re-validation. The stronger guarantee was
+               # enforced on the inner object while the envelope carrying it was unchecked.
+               ROOT / "schemas" / "bundle.schema.json"]
 
     def walk(node: object, where: str) -> None:
         if not isinstance(node, dict):
@@ -942,9 +941,15 @@ def check_record_schema_closed(r: Report) -> None:
         # `["auth bypass in the internal refund workflow"]` with zero errors and no leak hits —
         # verified. Every closed-schema guarantee in CONTRIBUTING.md and SECURITY.md rests on
         # "a path or description has no field to occupy", and this is a field to occupy.
-        if node.get("type") == "array" and "items" not in node:
+        # `x-validated-by` is the one exemption, and it must name the pass that validates the
+        # elements — the same contract privacy_gate.validate() honours. bundle.records is
+        # opaque on purpose because check_bundle() checks each element against the record
+        # schema; declaring it keeps "validated elsewhere" distinguishable from "unvalidated".
+        if (node.get("type") == "array" and "items" not in node
+                and not str(node.get("x-validated-by", "")).strip()):
             r.fail("L25", f"{where} is an array without `items` — its elements are "
-                          "unvalidated, which makes it a free-text field in disguise")
+                          "unvalidated, which makes it a free-text field in disguise. If "
+                          "another pass validates them, name it in `x-validated-by`")
         for key, child in node.get("properties", {}).items():
             walk(child, f"{where}.{key}")
         for key, child in node.get("definitions", {}).items():
@@ -952,7 +957,15 @@ def check_record_schema_closed(r: Report) -> None:
         if "items" in node:
             walk(node["items"], f"{where}[]")
 
-    walk(schema, "run-record")
+    for path in schemas:
+        if not path.exists():
+            continue
+        try:
+            schema = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            r.fail("L25", f"{path.name} is not valid JSON: {e}")
+            continue
+        walk(schema, path.stem.replace(".schema", ""))
 
 
 PROOF_VOCAB: dict[str, set[str]] = {
@@ -1350,6 +1363,44 @@ def check_gate_parity(r: Report) -> None:
             r.fail("L34", f"CI runs `{line}` and the Makefile does not — `make check` claims "
                           "to be the same gate, so a contributor would get a different "
                           "verdict from the one that blocks the merge (lessons/0011)")
+
+    # THE OTHER DIRECTION, which was missing. "Everything CI runs is also in the Makefile" is
+    # satisfied by a workflow that runs nothing: deleting the `mypy` step left this check
+    # silent, so a PR could switch off part of the merge gate with all 36 checks green.
+    # Verified by the fourth review round, against a check written the same day.
+    #
+    # It is `lessons/0011`'s own conclusion, applied there to the eval guards and not to
+    # itself: "the SYMMETRIC guard is the actual fix — nothing had checked that the treatment
+    # arm HAD the skill." Same shape. Assert both sides, not the convenient one.
+    #
+    # Scoped to the `check` chain: the paid and rebuild targets (`baseline`, `learn`,
+    # `ledger-rebuild`) are deliberately not in CI, and demanding they be there would make the
+    # check wrong rather than strict.
+    chain = re.search(r"^check:([^\n]*)$", raw, re.M)
+    wanted: set[str] = set()
+    if chain:
+        for target in chain.group(1).split():
+            body = re.search(rf"^{re.escape(target)}:[^\n]*\n((?:\t.*\n|#.*\n)*)", raw, re.M)
+            if not body:
+                continue
+            for ln in norm(re.sub(r"\\\s*\n\s*", " ", body.group(1))).splitlines():
+                cmd = ln.strip().lstrip("@-").strip()
+                # Drop any leading env assignments (`PATH=... pytest …`) before the tool name.
+                cmd = re.sub(r"^(?:[A-Za-z_][A-Za-z_0-9]*=\S*\s+)+", "", cmd)
+                if cmd.startswith(GATE_COMMANDS):
+                    wanted.add(cmd)
+    # Against the workflow's COMMANDS, not its text. `mypy` appears in
+    # `pip install --quiet pytest mypy ruff`, so a whole-file substring test stayed green with
+    # the mypy step deleted — incidental text propping up a check, for the third time today.
+    ci_cmds = [
+        c for c in (re.sub(r"^-?\s*run:\s*", "", ln.strip()) for ln in workflow.splitlines())
+        if c.startswith(GATE_COMMANDS)
+    ]
+    for cmd in sorted(wanted):
+        if not any(cmd in c for c in ci_cmds):
+            r.fail("L34", f"`make check` runs `{cmd}` and CI does not — the merge gate is "
+                          "weaker than the gate contributors run, so a step can be deleted "
+                          "from the workflow with every check still green")
 
     # Against the RAW text: norm() strips the leading tabs that delimit a recipe body.
     target = re.search(r"^test:\n((?:\t.*\n)+)", raw, re.M)

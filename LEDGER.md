@@ -7,7 +7,7 @@ Where VIGIL's improvements actually came from. Every row is backed by a committe
 lesson in [`lessons/`](lessons/README.md) recording something VIGIL, or its own
 self-audit, got **wrong**.
 
-**12 of 14 classes mechanized** · 14 lessons · 1 open · 1 judged unmechanizable
+**13 of 15 classes mechanized** · 15 lessons · 1 open · 1 judged unmechanizable
 
 ## Contributors
 
@@ -18,8 +18,8 @@ one shape is one class — the metric is deliberately hard to inflate.
 |---|---|---|---|
 | Author / implementer | **8** | 8 | 8 |
 | ci | **3** | 3 | 3 |
+| Kimi (cross-model review) | **3** | 3 | 2 |
 | Grok (cross-model review) | **2** | 2 | 1 |
-| Kimi (cross-model review) | **2** | 2 | 1 |
 | gpt-5.5 | **1** | 1 | 1 |
 | The audited model itself | **1** | 1 | 1 |
 
@@ -30,11 +30,11 @@ human reading carefully and one found by an automated check are very different s
 
 | Missed it | Times |
 |---|---|
-| check_repo.py (automated) | 9 |
-| Author / implementer | 9 |
-| Grok (cross-model review) | 4 |
+| check_repo.py (automated) | 10 |
+| Author / implementer | 10 |
+| Grok (cross-model review) | 5 |
+| ci | 4 |
 | Kimi (cross-model review) | 3 |
-| ci | 3 |
 | RULES.md Rule 3 | 2 |
 | Harness design review | 1 |
 | preflight | 1 |
@@ -46,6 +46,7 @@ human reading carefully and one found by an automated check are very different s
 | review | 1 |
 | L19 | 1 |
 | test_prose_clauses | 1 |
+| gpt-5.5 | 1 |
 
 ## Classes
 
@@ -57,6 +58,7 @@ human reading carefully and one found by an automated check are very different s
 | a control removed produces silence, and silence is indistinguishable from nothing to report | ✅ `L35` | [Narrowing the CI trigger to stop redundant tag runs stopped every branch run instead](lessons/0012-tidying-the-trigger-turned-the-gate-off.md) |
 | a control's presence is not its efficacy — reading is not running | ✅ `L31` | [A rate limiter was credited as a compensating control; it had never blocked a single request](lessons/0008-control-present-not-effective.md) |
 | a finding is relative to a tree, and the tree is never named | ✅ `L33` | [An audit report was headed with a commit SHA; it had audited neither that commit nor anything equal to it](lessons/0010-which-tree-was-audited.md) |
+| a guard written for one direction, by someone who had just written down that guards must be symmetric | ✅ `L25, L34` | [The check written that morning contained the hole whose lesson was written that morning](lessons/0015-the-check-i-wrote-that-morning-had-the-hole-i-had-just-fixed.md) |
 | a measurement instrument that fails in both directions | ⏳ | [The eval reported 100% recall for an audit containing no analysis — twice, after two fixes](lessons/0005-metric-that-flatters.md) |
 | a privacy check aimed at the surface a human writes, while the machine-written artifact beside it leaked | ✅ `L19` | [The check that forbids real paths in contributed material scanned the prose and not the data](lessons/0013-the-check-read-the-prose-and-not-the-artifact.md) |
 | a scanner hit is a pointer to a question, not an answer to it | ✅ `L32` | [Two findings were reported from scanner output; both files already answered the scanner](lessons/0009-scanner-hit-is-a-pointer.md) |

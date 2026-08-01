@@ -37,8 +37,10 @@ surroundings — and answer three questions:
 1. **Is there an in-place justification?** A comment at or near the hit naming the mitigation,
    the compensating config, or a verification command. Scanners do not read comments.
 2. **Has intent been declared in a way the scanner cannot see?** A language-level parameter
-   (`usedforsecurity=False`), a typed wrapper, a suppression carrying a reason. The absence of
-   a *scanner-visible* declaration is not the absence of a declaration.
+   (`usedforsecurity=False`) or a typed wrapper — something the *compiler or runtime* enforces.
+   The absence of a *scanner-visible* declaration is not the absence of a declaration.
+   A suppression comment (`# nosec`, `// eslint-disable`) is **not** one of these, whatever
+   reason it carries: it is a claim in a comment, so it is Q1 and enters at **Present**.
 3. **What would the proposed fix break?** Rule 9 requires every finding to carry a fix. A
    remediation that would orphan stored data, break a persisted identifier or change a wire
    format is not a fix, and a finding whose only remedy is destructive is not yet complete.
@@ -51,7 +53,11 @@ cannot have the weaker gate:
   Rule 3a's ladder at **Present**, which reduces nothing. Only **Executed** or **Tested**
   withdraws; **Traced** may reduce one step and the finding is still reported.
 - **Q2 may resolve**, because a language-level declaration is a fact about the code rather than
-  an assertion about a control — but **quote the declaration and its line** in the report.
+  an assertion about a control — but **quote the declaration and its line** in the report, and
+  first ask whether the declaration is *correct*. `usedforsecurity=False` on a password hash is
+  a true statement about the call and a false statement about the program: the declaration is
+  then the finding, at the severity the hit already carried. A declaration settles what the
+  code *says*, never whether saying it was right.
 - **Q3 never resolves anything.** A destructive remediation makes the *fix* incomplete, not the
   finding absent.
 - **A withdrawn hit is reported as withdrawn** — in the findings surface, with its rule id and
@@ -78,7 +84,10 @@ Before reporting a finding:
 1. Verify the code path is reachable
 2. Check if mitigations exist elsewhere (middleware, framework defaults, WAF)
 3. Check if it's test/dev-only code
-4. If uncertain, mark as `NEEDS_REVIEW` not CRITICAL
+4. If uncertain, mark `NEEDS_REVIEW` — **at the severity the finding already carries.** The
+   mark records that the mitigation is unverified; it is not a downgrade. Rule 3a's fence says
+   the same thing and is the authority: uncertainty never moves a severity, because a lowered
+   severity is indistinguishable in the report from a verified one.
 
 False positives destroy trust faster than missed findings.
 
