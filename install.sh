@@ -22,52 +22,68 @@ else R=''; G=''; Y=''; D=''; N=''; fi
 die() { printf '%serror:%s %s\n' "$R" "$N" "$1" >&2; exit 1; }
 say() { printf '  %s\n' "$1"; }
 
-printf '\n  %sVIGIL%s — codebase quality and compliance audit for Claude Code\n\n' "$Y" "$N"
+# EVERYTHING below lives in main(), which is called on the very last line.
+#
+# This is served as `curl … | bash`, and bash executes a pipe as it arrives. A connection that
+# drops mid-transfer would otherwise run whatever prefix arrived — and the prefix that matters
+# contains `git reset --hard`. Today truncation happens to abort on a syntax error because the
+# destructive commands sit inside an unterminated `if`, but that is luck, not design: reorder
+# two blocks and it stops being true.
+#
+# With the wrapper, a truncated download defines a function and never calls it. Safety becomes
+# structural rather than incidental — the same trade this repo makes everywhere else
+# (unrepresentable over redacted, consent by construction over consent by policy).
+main() {
 
-command -v git >/dev/null 2>&1 || die "git is required but not installed."
+  printf '\n  %sVIGIL%s — codebase quality and compliance audit for Claude Code\n\n' "$Y" "$N"
 
-# Refuse to clobber something that is not us. A directory here may be another skill, or a
-# symlink into a working copy someone is developing in.
-if [ -e "$SKILL_DIR" ] && [ ! -d "$SKILL_DIR/.git" ]; then
-  die "$SKILL_DIR exists and is not a git checkout. Move it aside, or set VIGIL_DIR."
-fi
+  command -v git >/dev/null 2>&1 || die "git is required but not installed."
 
-if [ -d "$SKILL_DIR/.git" ]; then
-  origin="$(git -C "$SKILL_DIR" remote get-url origin 2>/dev/null || echo '')"
-  case "$origin" in
-    *vigil*) say "updating existing install at ${D}${SKILL_DIR}${N}"
-             git -C "$SKILL_DIR" fetch --quiet origin "$BRANCH"
-             git -C "$SKILL_DIR" checkout --quiet "$BRANCH"
-             git -C "$SKILL_DIR" reset --hard --quiet "origin/$BRANCH" ;;
-    *)       die "$SKILL_DIR is a checkout of ${origin:-something else}, not VIGIL." ;;
-  esac
-else
-  say "cloning into ${D}${SKILL_DIR}${N}"
-  mkdir -p "$(dirname "$SKILL_DIR")"
-  git clone --quiet --branch "$BRANCH" "$REPO_URL" "$SKILL_DIR"
-fi
-
-# ── Verify, do not assert ────────────────────────────────────────────────────────────────
-if command -v python3 >/dev/null 2>&1; then
-  python3 "$SKILL_DIR/evals/check_loadable.py" >/dev/null 2>&1 \
-    || die "installed, but the skill is not discoverable — please open an issue with this output:
-    $(python3 "$SKILL_DIR/evals/check_loadable.py" 2>&1 | head -5)"
-  say "${G}✓${N} discoverable as a Claude Code skill"
-
-  if python3 "$SKILL_DIR/evals/check_repo.py" >/dev/null 2>&1; then
-    say "${G}✓${N} self-audit clean"
-  else
-    say "${Y}!${N} self-audit reported findings — the skill works; run it to see them:"
-    say "  ${D}python3 $SKILL_DIR/evals/check_repo.py${N}"
+  # Refuse to clobber something that is not us. A directory here may be another skill, or a
+  # symlink into a working copy someone is developing in.
+  if [ -e "$SKILL_DIR" ] && [ ! -d "$SKILL_DIR/.git" ]; then
+    die "$SKILL_DIR exists and is not a git checkout. Move it aside, or set VIGIL_DIR."
   fi
-else
-  say "${Y}!${N} python3 not found — skipping verification. The skill itself needs no Python;"
-  say "  only its self-checks do."
-fi
 
-version="$(git -C "$SKILL_DIR" describe --tags --always 2>/dev/null || echo 'unknown')"
-printf '\n  installed %s\n\n' "${D}${version}${N}"
-say "Try it:      ${Y}/vigil scan${N}      quick pass, ~30s"
-say "             ${Y}/vigil audit${N}     full audit with correlation"
-say "Uninstall:   ${D}rm -rf $SKILL_DIR${N}"
-printf '\n'
+  if [ -d "$SKILL_DIR/.git" ]; then
+    origin="$(git -C "$SKILL_DIR" remote get-url origin 2>/dev/null || echo '')"
+    case "$origin" in
+      *vigil*) say "updating existing install at ${D}${SKILL_DIR}${N}"
+               git -C "$SKILL_DIR" fetch --quiet origin "$BRANCH"
+               git -C "$SKILL_DIR" checkout --quiet "$BRANCH"
+               git -C "$SKILL_DIR" reset --hard --quiet "origin/$BRANCH" ;;
+      *)       die "$SKILL_DIR is a checkout of ${origin:-something else}, not VIGIL." ;;
+    esac
+  else
+    say "cloning into ${D}${SKILL_DIR}${N}"
+    mkdir -p "$(dirname "$SKILL_DIR")"
+    git clone --quiet --branch "$BRANCH" "$REPO_URL" "$SKILL_DIR"
+  fi
+
+  # ── Verify, do not assert ────────────────────────────────────────────────────────────────
+  if command -v python3 >/dev/null 2>&1; then
+    python3 "$SKILL_DIR/evals/check_loadable.py" >/dev/null 2>&1 \
+      || die "installed, but the skill is not discoverable — please open an issue with this output:
+      $(python3 "$SKILL_DIR/evals/check_loadable.py" 2>&1 | head -5)"
+    say "${G}✓${N} discoverable as a Claude Code skill"
+
+    if python3 "$SKILL_DIR/evals/check_repo.py" >/dev/null 2>&1; then
+      say "${G}✓${N} self-audit clean"
+    else
+      say "${Y}!${N} self-audit reported findings — the skill works; run it to see them:"
+      say "  ${D}python3 $SKILL_DIR/evals/check_repo.py${N}"
+    fi
+  else
+    say "${Y}!${N} python3 not found — skipping verification. The skill itself needs no Python;"
+    say "  only its self-checks do."
+  fi
+
+  version="$(git -C "$SKILL_DIR" describe --tags --always 2>/dev/null || echo 'unknown')"
+  printf '\n  installed %s\n\n' "${D}${version}${N}"
+  say "Try it:      ${Y}/vigil scan${N}      quick pass, ~30s"
+  say "             ${Y}/vigil audit${N}     full audit with correlation"
+  say "Uninstall:   ${D}rm -rf $SKILL_DIR${N}"
+  printf '\n'
+}
+
+main "$@"
