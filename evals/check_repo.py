@@ -45,6 +45,7 @@ Checks:
   L31 Rule 3 requires demonstrated efficacy before a control reduces severity
   L32 Rule 1 says a scanner hit is a pointer to a question, not an answer
   L33 Rule 10a requires every report to name the tree it audited
+  L34 the Makefile gate and the CI workflow run the same commands in the same environment
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -1216,6 +1217,85 @@ def check_subject_named(r: Report) -> None:
                           "the defect lessons/0010 records")
 
 
+# Commands the Makefile and the workflow must agree on. Anything else in either file (shell
+# conditionals, the privacy-gate pair, echo) is deliberately out of scope — this is about the
+# tool invocations whose ARGUMENTS silently drift.
+GATE_COMMANDS = ("python3 evals/", "pytest", "mypy", "ruff")
+
+
+def check_gate_parity(r: Report) -> None:
+    """L34 — `make check` must run what CI runs, in the environment CI has.
+
+    The Makefile header already promised "exactly what CI runs ... green here means green
+    there". It was wrong in two ways at once, and `lessons/0011` records both:
+
+    1. `lint` ran `ruff check evals/*.py tests/*.py` while CI ran `ruff check .` — scripts/
+       and examples/ were linted in one place and not the other.
+    2. Worse, because no command comparison would have caught it: the commands matched
+       exactly and the verdicts still differed, because a hosted runner has no `claude` on
+       PATH. Two guards in run_eval.py probed the CLI before their own free filesystem check,
+       which exits 2 locally and raises FileNotFoundError there. Three commits, CI red, local
+       green.
+
+    So this asserts both halves — same arguments, and the test target neutralizes PATH.
+    A gate whose environment differs from CI's is two gates.
+    """
+    mk, wf = ROOT / "Makefile", ROOT / ".github" / "workflows" / "self-audit.yml"
+    if not mk.exists() or not wf.exists():
+        r.fail("L34", "Makefile or .github/workflows/self-audit.yml is missing — the shared "
+                      "gate definition is what stops CI and contributors diverging")
+        return
+
+    def norm(text: str) -> str:
+        """Collapse continuations, then drop variable-bearing tokens.
+
+        The same command is spelled `"${files[@]}"` in YAML and `$$files` in a recipe. Those
+        differ as strings and are identical as gates, so comparing raw text would force one
+        file to adopt the other's shell dialect — a check nobody could satisfy gets deleted.
+        What must not drift is the tool and its literal arguments.
+        """
+        joined = re.sub(r"\\\s*\n\s*", " ", text)
+        return "\n".join(
+            " ".join(tok for tok in ln.split() if "$" not in tok)
+            for ln in joined.splitlines()
+        )
+
+    raw = mk.read_text(encoding="utf-8")
+    workflow = norm(wf.read_text(encoding="utf-8"))
+    # Recipe lines ONLY — tab-indented, `@`/`-` prefixes stripped. Comparing against the whole
+    # file meant a comment could satisfy the check: the line documenting *why* lint must run
+    # `ruff check .` contains that string, so narrowing the actual recipe left this green.
+    # A gate that its own documentation can satisfy is the prose-check failure again.
+    recipes = norm("\n".join(
+        ln.lstrip("\t").lstrip("@-")
+        for ln in re.sub(r"\\\s*\n\s*", " ", raw).splitlines()
+        if ln.startswith("\t")
+    ))
+
+    # `run: ruff check .` and a bare line inside a `run: |` block are the same instruction.
+    # Matching only the block form left every single-line step uncompared — which is most of
+    # them, including the `ruff` divergence this check was written for.
+    for raw_line in workflow.splitlines():
+        line = re.sub(r"^-?\s*run:\s*", "", raw_line.strip())
+        if not line.startswith(GATE_COMMANDS):
+            continue
+        if line not in recipes:
+            r.fail("L34", f"CI runs `{line}` and the Makefile does not — `make check` claims "
+                          "to be the same gate, so a contributor would get a different "
+                          "verdict from the one that blocks the merge (lessons/0011)")
+
+    # Against the RAW text: norm() strips the leading tabs that delimit a recipe body.
+    target = re.search(r"^test:\n((?:\t.*\n)+)", raw, re.M)
+    if target is None:
+        r.fail("L34", "the Makefile has no `test:` recipe to compare against CI")
+    # Anchored: a bare `"PATH=" in body` substring test also accepts `NOPATH=`, so renaming
+    # the assignment would disable the guard while the check stayed green.
+    elif not re.search(r"(?:^|[\s;(@])PATH=", target.group(1)):
+        r.fail("L34", "`make test` does not restrict PATH, so it runs with whatever CLIs the "
+                      "maintainer has installed and CI does not. Sharing the command is not "
+                      "sharing the verdict — that is exactly how lessons/0011 happened")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -1254,6 +1334,7 @@ def main() -> int:
     check_control_efficacy(r)
     check_hit_is_a_pointer(r)
     check_subject_named(r)
+    check_gate_parity(r)
     return r.emit()
 
 

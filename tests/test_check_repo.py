@@ -172,6 +172,12 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     ("L26", lambda r: edit(r / "proof" / "0001-secret-removed-from-tree-still-live-in-history.md",
                            "severity: HIGH", "severity: SEVERE")),
     ("L28", flip_share_default),
+    # Inversion: narrow the lint target back to the globs it had while CI linted `.` — the
+    # literal divergence L34 was written for, restored one character at a time.
+    ("L34", lambda r: edit(r / "Makefile", "\nlint:\n\truff check .",
+                           "\nlint:\n\truff check evals/*.py tests/*.py")),
+    # The half no command comparison catches: identical commands, different environment.
+    ("L34", lambda r: edit(r / "Makefile", 'PATH="$$(python3', 'NOPATH="$$(python3')),
 ]
 
 

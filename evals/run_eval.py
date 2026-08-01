@@ -444,6 +444,24 @@ def assert_skill_invisible(model: str | None) -> None:
     A benchmark that can quietly measure the wrong thing and still print a plausible number is
     the shape of lessons/0002. So this is a hard gate, not a warning.
     """
+    # The FREE check runs FIRST, and it is defence in depth rather than a shortcut: the model
+    # probe below is weaker than it looks, because Claude Code lists a skill by its DIRECTORY
+    # name. A copy stashed as `.baseline-stash` is fully discoverable and named nothing like
+    # "vigil". That exact contamination happened here, and was caught only because the stash
+    # name coincidentally contained "vigil".
+    #
+    # So: no directory anywhere under the skills tree may declare `name: vigil`, whatever it
+    # is called on disk — and finding one must cost nothing, because a guard that spends a
+    # paid CLI call to discover it should not have run is a guard people disable. Ordering
+    # this after the probe also made the whole function unrunnable without the CLI, which is
+    # how it failed in CI while passing on the maintainer's machine.
+    found = _vigil_installed()
+    if found is not None:
+        print(f"harness error: {found} still declares `name: vigil` — the control arm would "
+              "see the skill under whatever the directory is called, and the delta would be "
+              "meaningless.", file=sys.stderr)
+        sys.exit(2)
+
     cmd = ["claude", "-p", "List the names of every skill available to you. "
                            "Output names only, one per line, nothing else."]
     if model:
@@ -452,19 +470,6 @@ def assert_skill_invisible(model: str | None) -> None:
     if r.returncode != 0:
         print(f"harness error: control probe exited {r.returncode}: {r.stderr[-400:]}",
               file=sys.stderr)
-        sys.exit(2)
-    # Defence in depth, because the name check below is weaker than it looks: Claude Code
-    # lists a skill by its DIRECTORY name, so a copy stashed as `.baseline-stash` would be
-    # fully discoverable and named nothing like "vigil". That exact contamination happened
-    # here and was caught only because the stash name coincidentally contained "vigil".
-    #
-    # So: no directory anywhere under the skills tree may declare `name: vigil`, whatever it
-    # is called on disk.
-    found = _vigil_installed()
-    if found is not None:
-        print(f"harness error: {found} still declares `name: vigil` — the control arm would "
-              "see the skill under whatever the directory is called, and the delta would be "
-              "meaningless.", file=sys.stderr)
         sys.exit(2)
 
     if "vigil" in r.stdout.lower():

@@ -150,13 +150,50 @@ def test_the_two_guards_are_mutually_exclusive(skills: Path) -> None:
 
 
 def _passes(fn: object) -> bool:
+    """True if the guard raised no objection.
+
+    Deliberately catches SystemExit only. Swallowing every exception made this read a *crash*
+    as a refusal, which is how the CLI-not-installed failure below stayed green here while
+    failing in CI — the guard never reached its check and the test could not tell.
+    """
     try:
         fn(None)  # type: ignore[operator]
     except SystemExit:
         return False
-    except Exception:
-        return False
     return True
+
+
+def _no_cli(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make any CLI invocation an error, the way a hosted runner does."""
+    def boom(*_a: object, **_k: object) -> object:
+        raise AssertionError("the guard invoked the `claude` CLI before its free check")
+    monkeypatch.setattr(run_eval.subprocess, "run", boom)
+
+
+def test_control_guard_refuses_WITHOUT_invoking_the_cli(
+        skills: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The ordering claim, actually enforced.
+
+    `assert_skill_invisible` probed the model FIRST and consulted the filesystem afterwards,
+    so on a machine with the CLI installed it exited 2 for the right reason and looked
+    correct. On a runner without the CLI it raised FileNotFoundError instead — CI red, local
+    green, for three commits. The check that costs nothing must come first.
+    """
+    install(skills, "vigil", symlink=True)
+    _no_cli(monkeypatch)
+    with pytest.raises(SystemExit) as e:
+        run_eval.assert_skill_invisible(None)
+    assert e.value.code == 2
+
+
+def test_treatment_guard_refuses_WITHOUT_invoking_the_cli(
+        skills: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Symmetric with the control guard — and it was already correct. The test exists so that
+    reordering it later fails here instead of in CI."""
+    _no_cli(monkeypatch)
+    with pytest.raises(SystemExit) as e:
+        run_eval.assert_skill_visible(None)
+    assert e.value.code == 2
 
 
 def test_env_override_is_honoured(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

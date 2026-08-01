@@ -71,7 +71,7 @@ manifest and install commands for each scanner.
 A tool that audits other people's evidence should produce its own.
 
 ```bash
-python3 evals/check_repo.py     # 33 structural checks, <1s, no LLM
+python3 evals/check_repo.py     # 34 structural checks, <1s, no LLM
 python3 evals/check_loadable.py # the skill is actually discoverable
 pytest tests/ -q               # every check must be able to FAIL
 python3 evals/run_eval.py      # recall / false positives against fixtures
