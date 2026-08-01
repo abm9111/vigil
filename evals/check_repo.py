@@ -675,15 +675,31 @@ def check_publish_placeholders(r: Report) -> None:
     for f in sorted(ROOT.rglob("*")):
         if not f.is_file() or ".git" in f.relative_to(ROOT).parts:
             continue
+        rel = f.relative_to(ROOT)
         if f.name == "LICENSE" or f.suffix not in (".md", ".yml", ".yaml", ".toml", ".py"):
+            continue
+        # A test that proves this check fires has to name what it looks for. Exempting the
+        # suite is not a loophole — tests/ ships to no user and links nowhere.
+        if rel.parts[0] == "tests":
             continue
         try:
             text = f.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
+        # Strip INLINE code spans, keep fenced blocks. Naming a placeholder in prose is
+        # *describing* it — `OWNER/REPO` in CONTRIBUTING.md documents this very check.
+        # Putting one in a fenced command is *using* it, and `git clone <this-repo>` in a
+        # README fence is exactly what must still be caught. That distinction is the whole
+        # difference between the two, and stripping both would blind the check to its
+        # primary target.
+        #
+        # Found only at publish time: the check fired on three descriptions of itself the
+        # first time a remote was added, which is the one moment it is allowed to run.
+        if f.suffix == ".md":
+            text = INLINE_CODE.sub("", text)
         for needle, what in PUBLISH_BLOCKERS:
             if needle in text and "PUBLISH_BLOCKERS" not in text:
-                r.fail("L21", f"{f.relative_to(ROOT)} contains {what} ({needle!r}) — "
+                r.fail("L21", f"{rel} contains {what} ({needle!r}) — "
                               "fill it in before publishing")
 
 

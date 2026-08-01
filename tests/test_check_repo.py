@@ -236,8 +236,15 @@ def test_l21_fires_only_once_a_remote_exists(repo: Path) -> None:
     subprocess.run(
         ["git", "remote", "add", "origin", "https://example.com/x.git"], cwd=repo, check=True
     )
+    # With a remote but no placeholders, the audit must be CLEAN — this is the state the repo
+    # is published in, and an always-red check teaches people to skim past it.
     code, out = run_check(repo)
-    assert code != 0 and "[L21]" in out, f"L21 did not fire with a remote set:\n{out}"
+    assert code == 0, f"L21 fired on a repo with a remote and no placeholders:\n{out}"
+
+    # Now inject a real one, in a fenced command — the form that actually ships broken.
+    edit(repo / "README.md", "## Status", "```bash\ngit clone <this-repo>\n```\n\n## Status")
+    code, out = run_check(repo)
+    assert code != 0 and "[L21]" in out, f"L21 missed a real placeholder:\n{out}"
 
 
 def test_every_documented_check_has_a_test() -> None:
