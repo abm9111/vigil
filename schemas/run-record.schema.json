@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/OWNER/REPO/schemas/run-record.schema.json",
+  "$id": "https://github.com/abm9111/vigil/schemas/run-record.schema.json",
   "title": "VIGIL run record",
   "description": "One audit run, reduced to VIGIL's own vocabulary. THE PRIVACY GUARANTEE IS STRUCTURAL: every string is an enum or a bounded pattern and additionalProperties is false at every level, so a path, repo name, hostname or finding description is unrepresentable rather than redacted. Adding a free-text field removes that guarantee, which is why L25 refuses one. REVISED 2026-07-31 against the first real run record: the original was written without ever having seen one and rejected it on 100+ counts, none of which were privacy violations. Where the disagreement was arbitrary, the observed shape wins — a schema is a description of what runs produce, and a gratuitous structural preference is what made version 1 reject everything.",
   "type": "object",

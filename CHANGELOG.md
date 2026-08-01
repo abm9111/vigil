@@ -47,4 +47,4 @@ The release where the project started producing its own evidence.
   documentation (`lessons/0006`). `L19` now scans contributed material for paths, hosts,
   emails and key-shaped strings.
 
-[0.4.0]: https://github.com/OWNER/REPO/releases/tag/v0.4.0
+[0.4.0]: https://github.com/abm9111/vigil/releases/tag/v0.4.0

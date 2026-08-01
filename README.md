@@ -43,7 +43,7 @@ artifact that quietly lied:
 Copy or symlink into your Claude Code skills directory:
 
 ```bash
-git clone <this-repo> ~/.claude/skills/vigil
+git clone https://github.com/abm9111/vigil.git ~/.claude/skills/vigil
 ```
 
 Then `/vigil` in any project. Tool discovery is automatic — see `engines/preflight.md` for the

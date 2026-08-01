@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability in VIGIL itself
-    url: https://github.com/OWNER/REPO/security/advisories/new
+    url: https://github.com/abm9111/vigil/security/advisories/new
     about: Use private reporting. Do not open a public issue. See SECURITY.md.
   - name: VIGIL missed a bug in my code
-    url: https://github.com/OWNER/REPO/blob/main/lessons/README.md
+    url: https://github.com/abm9111/vigil/blob/main/lessons/README.md
     about: That is a lesson, not a vulnerability — and it is the most useful contribution here.

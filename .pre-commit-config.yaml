@@ -1,0 +1,49 @@
+# Local hooks only — no remote revs to pin, nothing fetched at commit time.
+#
+# Deliberate: this repo's whole argument is that a tool must be the one that sees what the
+# subject sees (lessons/0007). A hook that installs its own isolated copy of ruff would run a
+# different linter from `make check` and from CI, and the disagreement would surface as a
+# mystery rather than as a version mismatch. `language: system` uses the interpreter you
+# already have, which is the same one every other gate uses.
+#
+#   pip install pre-commit && pre-commit install
+#
+# This is a convenience, not a gate. CI is the gate — a hook can be skipped with --no-verify,
+# and a check that can be skipped is not a control (RULES.md Rule 3a).
+
+repos:
+  - repo: local
+    hooks:
+      - id: vigil-self-audit
+        name: VIGIL self-audit (33 structural checks)
+        entry: python3 evals/check_repo.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: vigil-loadable
+        name: skill is still discoverable
+        entry: python3 evals/check_loadable.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: vigil-ledger-current
+        name: LEDGER.md matches its lessons
+        entry: python3 evals/build_ledger.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: ruff
+        name: ruff (harness only — fixtures are deliberately defective)
+        entry: ruff check
+        language: system
+        files: ^(evals|tests)/[^/]+\.py$
+
+      - id: mypy
+        name: mypy (config in pyproject.toml)
+        entry: mypy
+        language: system
+        pass_filenames: false
+        always_run: true

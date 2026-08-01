@@ -1,0 +1,10 @@
+# Every PR is read by a maintainer before merge.
+#
+# This is not ceremony. `L19` scans contributed lessons, results and proof entries for paths,
+# hosts, emails and key shapes, and its own docstring says it cannot read prose — "we rely on a
+# legacy service for authorisation and it is not covered by tests" has no path, no host and no
+# key, and every detail an attacker wants. The human read IS the control for that class.
+#
+# lessons/0006 records this repo shipping a live business through three reviews.
+
+*       @abm9111
