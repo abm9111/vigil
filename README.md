@@ -1,5 +1,8 @@
 # VIGIL
 
+[![self-audit](https://github.com/abm9111/vigil/actions/workflows/self-audit.yml/badge.svg)](https://github.com/abm9111/vigil/actions/workflows/self-audit.yml)
+[![licence: Apache-2.0](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
+
 A codebase auditing skill for [Claude Code](https://claude.com/claude-code). It runs the
 deterministic tools your stack already has, correlates what they find across domains, and
 scores the result — under rules designed so the grade cannot quietly contradict the findings.

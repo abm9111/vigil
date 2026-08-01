@@ -11,3 +11,6 @@ evals/fixtures/*/export/
 # Run records this repo generates when auditing itself. Local by design —
 # engines/telemetry.md: records never leave the machine without an explicit act.
 .vigil/
+
+# scratch from a local eval run — never part of the repo
+.deepeval/
