@@ -129,6 +129,10 @@ decision rather than an edit, each with the argument already made so the next pa
 it. The largest: most clusters still have no probe that can fail, so most of the weighted
 average is unevidenced by construction.
 
+## Reviewing this
+
+Invited reviewer? Start at [REVIEWING.md](REVIEWING.md) — what is already known, what is deliberately open, and where the risk actually is.
+
 ## Status
 
 Experimental. Use it as an auditing assistant with a self-checking harness, not as a graded

@@ -610,7 +610,12 @@ def check_contributed_privacy(r: Report) -> None:
             h = host.lower()
             if h in ALLOWED_HOSTS or h.endswith(".example") or h.endswith(".md"):
                 continue
-            if re.fullmatch(r"[a-z_.-]+\.(py|md|json|toml|yml|yaml|txt|sha256|csv|parquet|xlsx|sql|html|js|ts)", h):
+            # `.sh` is both a common script extension and a real TLD (Sharjah), so exempting
+            # it trades a false positive for a small blind spot: a genuine `something.sh` host
+            # would now be missed. Documented rather than hidden — L19 is deliberately noisy
+            # in one direction, but a check that fires on `install.sh` in every document that
+            # mentions the installer trains people to skim past it, which is worse.
+            if re.fullmatch(r"[a-z_.-]+\.(py|md|json|toml|yml|yaml|txt|sha256|csv|parquet|xlsx|sql|html|js|ts|sh)", h):
                 continue  # a filename, not a host
             r.fail("L19", f"{rel} names host {host!r}, which is not in ALLOWED_HOSTS — "
                           "if it is a real system, redact it; if it is a legitimate "

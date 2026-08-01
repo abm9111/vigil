@@ -55,6 +55,10 @@ codebase that was not its own. Same rule as lessons, and the temptation is worse
 a proof entry *wants* to be impressive and specificity is what makes a war story impressive.
 Name the class, never the system.
 
+## Reviewing rather than contributing
+
+See [REVIEWING.md](REVIEWING.md).
+
 ## Working on the code
 
 ```bash
