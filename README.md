@@ -43,6 +43,9 @@ artifact that quietly lied:
 Copy or symlink into your Claude Code skills directory:
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/abm9111/vigil/main/install.sh | bash
+
+# or, if you would rather read the script first — which for an auditing tool you should:
 git clone https://github.com/abm9111/vigil.git ~/.claude/skills/vigil
 ```
 
