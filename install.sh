@@ -47,25 +47,37 @@ main() {
 
   if [ -d "$SKILL_DIR/.git" ]; then
     origin="$(git -C "$SKILL_DIR" remote get-url origin 2>/dev/null || echo '')"
+    # Exact allowlist, not a substring. `*vigil*` matched ANY remote containing the word —
+    # and the next line does `reset --hard` against whatever that remote is, discarding
+    # local state. A redirected or squatted remote would have won.
     case "$origin" in
-      *vigil*) say "updating existing install at ${D}${SKILL_DIR}${N}"
-               git -C "$SKILL_DIR" fetch --quiet origin "$BRANCH"
-               git -C "$SKILL_DIR" checkout --quiet "$BRANCH"
-               git -C "$SKILL_DIR" reset --hard --quiet "origin/$BRANCH" ;;
-      *)       die "$SKILL_DIR is a checkout of ${origin:-something else}, not VIGIL." ;;
+      "$REPO_URL"|\
+      https://github.com/abm9111/vigil.git|https://github.com/abm9111/vigil|\
+      git@github.com:abm9111/vigil.git|ssh://git@github.com/abm9111/vigil.git)
+        say "updating existing install at ${D}${SKILL_DIR}${N}"
+        git -C "$SKILL_DIR" fetch --quiet origin "$BRANCH"
+        git -C "$SKILL_DIR" checkout --quiet "$BRANCH"
+        git -C "$SKILL_DIR" reset --hard --quiet "origin/$BRANCH" ;;
+      *) die "$SKILL_DIR tracks ${origin:-an unknown remote}, which is not VIGIL.
+    Refusing to reset --hard against it. Move it aside, or set VIGIL_DIR." ;;
     esac
   else
     say "cloning into ${D}${SKILL_DIR}${N}"
     mkdir -p "$(dirname "$SKILL_DIR")"
-    git clone --quiet --branch "$BRANCH" "$REPO_URL" "$SKILL_DIR"
+    git clone --quiet --branch "$BRANCH" -- "$REPO_URL" "$SKILL_DIR"
   fi
 
   # ── Verify, do not assert ────────────────────────────────────────────────────────────────
+  #
+  # Honest about what this proves: it runs the tree's OWN checks, so it confirms the download
+  # is complete and internally consistent — not that it is authentic. A compromised source
+  # could make these pass. That is inherent to `curl | bash`; the mitigation is reading the
+  # script and the repo first, which the README recommends for exactly this reason.
   if command -v python3 >/dev/null 2>&1; then
     python3 "$SKILL_DIR/evals/check_loadable.py" >/dev/null 2>&1 \
       || die "installed, but the skill is not discoverable — please open an issue with this output:
       $(python3 "$SKILL_DIR/evals/check_loadable.py" 2>&1 | head -5)"
-    say "${G}✓${N} discoverable as a Claude Code skill"
+    say "${G}✓${N} discoverable as a Claude Code skill (per the tree's own checks)"
 
     if python3 "$SKILL_DIR/evals/check_repo.py" >/dev/null 2>&1; then
       say "${G}✓${N} self-audit clean"

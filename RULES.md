@@ -43,13 +43,24 @@ surroundings — and answer three questions:
    remediation that would orphan stored data, break a persisted identifier or change a wire
    format is not a fix, and a finding whose only remedy is destructive is not yet complete.
 
-If the answer to 1 or 2 is yes and it holds, the hit is **resolved, not reported** — and say so
-in the coverage notes, because a scanner hit that was investigated and dismissed is information
-the next auditor should not have to rediscover.
+**Withdrawing a hit is harder than reducing one, not easier.** Rule 3a puts a whole ladder in
+front of a one-step severity reduction. Dropping a finding entirely is the stronger act, so it
+cannot have the weaker gate:
 
-This does not license dismissal. It licenses **reading**, and Rule 3's rationalization table
-still applies to whatever you find there: an in-place comment claiming a mitigation is a claim,
-and Rule 3a governs whether its efficacy was demonstrated or merely asserted.
+- **Q1 alone never resolves a hit.** A comment claiming a mitigation is a *claim* — it enters
+  Rule 3a's ladder at **Present**, which reduces nothing. Only **Executed** or **Tested**
+  withdraws; **Traced** may reduce one step and the finding is still reported.
+- **Q2 may resolve**, because a language-level declaration is a fact about the code rather than
+  an assertion about a control — but **quote the declaration and its line** in the report.
+- **Q3 never resolves anything.** A destructive remediation makes the *fix* incomplete, not the
+  finding absent.
+- **A withdrawn hit is reported as withdrawn** — in the findings surface, with its rule id and
+  the reason, never only in coverage notes a reader can skim past. Rule 8 forbids manufacturing
+  findings; it equally forbids disappearing them.
+
+This does not license dismissal. It licenses **reading**. An in-place comment claiming a
+mitigation is exactly the "control credited on inspection" that Rule 3a exists to stop, and
+routing Q1 through that ladder is what keeps 1a from reopening the hole 3a closed.
 
 ## Rule 2: Severity Definitions
 
@@ -102,6 +113,26 @@ examined in the one state where it works.
 severity and is marked `NEEDS_REVIEW`. Never reduce quietly on the strength of a control you
 did not exercise — a severity lowered on an unverified mitigation is indistinguishable in the
 report from one lowered on a verified one, and the reader cannot tell which they are holding.
+
+**The floor fence — this rule may not do what Rule 7 forbids.** Rule 7 states that a
+reachability downgrade moves the penalty and the fix priority but **does not move the severity
+floor**, which is computed from the constituent finding's own severity. A compensating control
+is the same kind of act — an argument that a real defect matters less — so it inherits the same
+limit:
+
+- **Control credit never moves the severity floor.** A CRITICAL mitigated by an executed
+  control is still floored as a CRITICAL in [engines/scoring.md](engines/scoring.md); the
+  credit reorders the work, it does not turn an unresolved CRITICAL into a pass.
+- **One application per finding, not per control.** Three Traced controls are one one-step
+  reduction, not three. Otherwise the ladder stacks CRITICAL → HIGH → MEDIUM → LOW with no
+  step ever exceeding its own limit.
+- To lift the cap on a finding you have decided to live with, **suppress it explicitly** —
+  `--ignore`, or an owner-and-expiry acceptance in `.vigil/context.md`. That prints beside the
+  grade where a reviewer sees it; a quiet reduction does not.
+
+Without this fence, `lessons/0004` repeats exactly: the floor exploit Rule 7 closed reopens
+through a second channel, because Rule 7's fence is local to one correlation pattern and this
+rule is global.
 
 This is Rule 1 applied to the defensive side of the ledger: evidence before opinion, including
 when the opinion is reassuring. An unexercised control is an impression, not a catch.

@@ -27,7 +27,6 @@ The convention it enforces is written up in AGENTS.md under "Mutating a prose ch
 """
 from __future__ import annotations
 
-import re
 import shutil
 import subprocess
 import sys
@@ -43,51 +42,66 @@ REPO = Path(__file__).resolve().parent.parent
 # an inversion proves the pattern keys on the part carrying the meaning — and inversion is the
 # realistic erosion, because nobody deletes a safety rule, they soften it.
 INVERSIONS: list[tuple[str, str, str, str]] = [
-    # L28 — the end-of-run consent contract
-    ("L28", "engines/telemetry.md",
-     "**The default is no, and enter must select it.**",
+    # ── L28 · the end-of-run consent contract ──────────────────────────────────────────
+    ("L28", "engines/telemetry.md", "**The default is no, and enter must select it.**",
      "**The default is yes.**"),
-    ("L28", "engines/telemetry.md",
-     "**non-interactive means no**",
+    ("L28", "engines/telemetry.md", "[n] no  (default", "[y] yes (default"),
+    ("L28", "engines/telemetry.md", "enter must select it", "enter may select either"),
+    ("L28", "engines/telemetry.md", "**non-interactive means no**",
      "**non-interactive means proceed**"),
-    ("L28", "engines/telemetry.md",
-     "`.vigil/telemetry: off` disables record writing entirely",
+    ("L28", "engines/telemetry.md", "is not asked\nagain", "is asked again"),
+    ("L28", "engines/telemetry.md", "prints the record in full",
+     "prints a summary of the record"),
+    ("L28", "engines/telemetry.md", "does not transmit", "transmits"),
+    ("L28", "engines/telemetry.md", "`.vigil/telemetry: off` disables record writing entirely",
      "record writing cannot be disabled"),
 
-    # L30 — a tool must resolve inside the subject's environment
-    ("L30", "engines/preflight.md",
-     "cannot contribute to a ceiling of 100",
+    # ── L30 · a tool must resolve inside the subject's environment ─────────────────────
+    ("L30", "engines/preflight.md", "must resolve inside the subject",
+     "may resolve anywhere relative to the subject"),
+    ("L30", "engines/preflight.md", "absolute path of every tool", "name of every tool"),
+    ("L30", "engines/preflight.md", "cannot contribute to a ceiling of 100",
      "may still contribute to a ceiling of 100"),
-    # This clause lives in RULES.md Rule 1a, not preflight — the first version of this table
-    # pointed at the wrong file, which the anchor assertion caught. A stale anchor stops
-    # testing its clause silently, so the assertion is deliberately loud.
-    ("L32", "RULES.md",
-     "Scanners do not read comments.",
-     "Scanners parse comments and honour them."),
+    ("L30", "engines/preflight.md", "clean result is **not\n> evidence**",
+     "clean result is **evidence**"),
+    ("L30", "engines/preflight.md", "project-local invocation", "global invocation"),
 
-    # L31 — a control's presence is not its efficacy
-    ("L31", "RULES.md",
-     "That is necessary and **not sufficient**",
+    # ── L31 · a control's presence is not its efficacy ─────────────────────────────────
+    ("L31", "RULES.md", "may reduce a finding's severity only on demonstrated efficacy",
+     "may reduce a finding's severity without demonstrated efficacy"),
+    ("L31", "RULES.md", "| **Executed**", "| Executed"),
+    ("L31", "RULES.md", "That is necessary and **not sufficient**",
      "That is necessary and sufficient"),
-    ("L31", "RULES.md",
-     "| **Present** | it exists in the code and looks correct | **no** |",
+    ("L31", "RULES.md", "| **Present** | it exists in the code and looks correct | **no** |",
      "| **Present** | it exists in the code and looks correct | yes |"),
+    ("L31", "RULES.md", "including its empty, first-call and error branches",
+     "including its steady-state branches"),
+    ("L31", "RULES.md", "the finding keeps its undiminished\nseverity",
+     "the finding loses its severity"),
 
-    # L32 — a scanner hit is a pointer, not an answer
-    ("L32", "RULES.md",
-     "pointer to a question, not an answer to it",
+    # ── L32 · a scanner hit is a pointer, not an answer ────────────────────────────────
+    ("L32", "RULES.md", "pointer to a question, not an answer to it",
      "pointer to a question and its answer"),
-    ("L32", "RULES.md",
-     "is not a fix, and a finding whose only remedy is destructive",
+    ("L32", "RULES.md", "required **starting** point, never\nbecause it is a sufficient",
+     "required point, and sufficient"),
+    ("L32", "RULES.md", "read the flagged location", "skim the flagged location"),
+    ("L32", "RULES.md", "Scanners do not read comments.", "Scanners read comments."),
+    ("L32", "RULES.md", "is not a fix, and a finding whose only remedy is destructive",
      "is an acceptable fix, and a finding whose only remedy is destructive"),
+    ("L32", "RULES.md", "Withdrawing a hit is harder than reducing one",
+     "Withdrawing a hit is easier than reducing one"),
+    ("L32", "RULES.md", "A withdrawn hit is reported as withdrawn",
+     "A withdrawn hit may go unreported"),
 
-    # L33 — name the tree that was audited
-    ("L33", "RULES.md",
-     "permitted **only when the tree is\nclean**",
+    # ── L33 · name the tree that was audited ──────────────────────────────────────────
+    ("L33", "RULES.md", "permitted **only when the tree is\nclean**",
      "permitted **in every case**"),
-    ("L33", "RULES.md",
-     "refuse the delta when the kinds differ",
+    ("L33", "RULES.md", "tracked only", "whatever was scanned"),
+    ("L33", "RULES.md", "different subjects", "the same subject"),
+    ("L33", "RULES.md", "refuse the delta when the kinds differ",
      "compute the delta regardless of kind"),
+    ("L33", "RULES.md", "Secret and PII scans read ignored paths too",
+     "Secret and PII scans never read ignored paths too"),
 ]
 
 
@@ -144,14 +158,32 @@ def test_each_clause_detects_its_own_inversion(
     )
 
 
-def test_every_prose_check_has_at_least_one_inversion() -> None:
-    """A prose check added without an entry here inherits the family's silent failure mode."""
-    src = (REPO / "evals" / "check_repo.py").read_text(encoding="utf-8")
-    # Clause tables are the marker: a list of (guarantee, pattern) pairs feeding a check.
-    declared = set(re.findall(r"^([A-Z_]+)_CLAUSES: list", src, re.M))
-    covered = {c for c, _, _, _ in INVERSIONS}
-    assert len(declared) <= len(covered), (
-        f"{len(declared)} prose-clause tables exist but only {len(covered)} checks have "
-        "inversion probes — see AGENTS.md, 'Mutating a prose check'"
+def test_every_clause_has_an_inversion_probe() -> None:
+    """One probe per CLAUSE, not per check.
+
+    The first version of this test compared table-count to check-count, which a cross-model
+    review showed proves almost nothing: a five-clause check passes its single mutation if any
+    ONE clause fires, leaving the other four free to match incidental text. Four such clauses
+    were leaking at the time — L30, L31 (x2) and L33 — while this test was green.
+
+    Counting probes per check is the weakest assertion that would have caught them.
+    """
+    import sys
+    sys.path.insert(0, str(REPO / "evals"))
+    import check_repo as C
+
+    tables = {"L28": C.CONSENT_CLAUSES, "L30": C.RESOLUTION_CLAUSES,
+              "L31": C.EFFICACY_CLAUSES, "L32": C.POINTER_CLAUSES,
+              "L33": C.SUBJECT_CLAUSES}
+    probes: dict[str, int] = {}
+    for check_id, *_ in INVERSIONS:
+        probes[check_id] = probes.get(check_id, 0) + 1
+
+    thin = {c: (probes.get(c, 0), len(t)) for c, t in tables.items()
+            if probes.get(c, 0) < len(t)}
+    assert not thin, (
+        "clauses without their own inversion probe (check: probes/clauses) — "
+        f"{thin}. A clause with no probe can match incidental text and keep the check "
+        "green while its rule says the opposite. See AGENTS.md, 'Mutating a prose check'."
     )
 

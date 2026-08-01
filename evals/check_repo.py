@@ -772,9 +772,22 @@ def check_stated_check_count(r: Report) -> None:
     place every contributor reads first.
     """
     src = Path(__file__).read_text(encoding="utf-8")
-    real = len(set(re.findall(r'r\.fail\("(L\d+)"', src)))
+    # Count checks that are WIRED INTO main(), not `r.fail` strings anywhere in the file.
+    #
+    # The string count was gameable in both directions: commenting out a call in main()
+    # disabled the check while the count stayed put, and a commented-out `r.fail("L99")`
+    # inflated it. Deriving the number from the call graph means the claim "N checks" and
+    # the checks that run cannot drift.
+    body = src[src.index("def main() -> int:"):]
+    wired = set(re.findall(r"^    (check_[a-z_]+)\(r\)$", body, re.M))
+    declared = {fn for fn in re.findall(r"^def (check_[a-z_]+)\(r: Report\)", src, re.M)}
+    orphan = declared - wired
+    if orphan:
+        r.fail("L24", f"check function(s) defined but never called from main(): "
+                      f"{sorted(orphan)} — the check does not run, and nothing else notices")
+    real = len(wired)
     if not real:
-        r.fail("L24", "could not count checks from this file's own r.fail calls")
+        r.fail("L24", "could not count checks from main()'s call graph")
         return
     # "26 checks", "26 structural checks", "26 structural self-checks" — the phrasing varies
     # and every variant is the same claim.
@@ -928,11 +941,11 @@ CONSENT_CLAUSES: list[tuple[str, str]] = [
     # catches the doc contradicting itself.
     ("the prose states that sharing defaults to no", r"default is no\b"),
     ("the option list marks [n] as the default", r"\[n\][^\n]*\bdefault"),
-    ("silence is not consent", r"enter must select it|enter selects no|says nothing, nothing"),
+    ("silence is not consent", r"enter must select it"),
     ("non-interactive is not consent", r"non-interactive means no\b"),
-    ("a decline is honoured", r"is not asked\s*\n?again|honour a no|never re-asked"),
-    ("the user can see the exact record", r"prints the record in full|show me exactly"),
-    ("VIGIL does not transmit", r"does not transmit|no endpoint|never transmitted"),
+    ("a decline is honoured", r"is not asked\s*\n?again"),
+    ("the user can see the exact record", r"prints the record in full"),
+    ("VIGIL does not transmit", r"does not transmit"),
     # `telemetry:\s*off` matched a second, incidental mention elsewhere in the file, so the
     # clause survived the disabling sentence being removed. Key on what the rule *does*.
     ("there is an off switch that disables record writing", r"disables record writing"),
@@ -1013,10 +1026,13 @@ def check_schema_prefixes(r: Report) -> None:
 # Prose again, for the same reason as L28 — the probe is executed by a model reading this file.
 # The check proves the requirement is stated and unambiguous, not that a given run obeyed it.
 RESOLUTION_CLAUSES: list[tuple[str, str]] = [
+    # The old second alternative matched "outside the subject's environment" — the
+    # FORBIDDEN state — so "a tool may resolve outside …" kept the check green. An
+    # alternative that matches the violation is worse than no clause at all.
     ("a tool must resolve inside the subject's environment",
-     r"resolve inside the subject|outside the subject'?s environment"),
+     r"must resolve inside the subject"),
     ("the resolved path is recorded, not just the version",
-     r"absolute path of every tool|resolved path beside"),
+     r"absolute path of every tool"),
     ("a misresolved tool cannot reach ceiling 100",
      r"cannot contribute to a ceiling of 100"),
     # `[\s>]*` because the clause sits in a blockquote and wraps: `**not\n> evidence**`.
@@ -1025,7 +1041,7 @@ RESOLUTION_CLAUSES: list[tuple[str, str]] = [
     ("an analyzer that cannot import the subject's dependencies is not evidence",
      r"clean result is \*\*not[\s>]*evidence\*\*"),
     ("the project-local invocation is preferred",
-     r"project-local invocation|python -m mypy"),
+     r"project-local invocation"),
 ]
 
 
@@ -1055,9 +1071,9 @@ def check_tool_resolution(r: Report) -> None:
 
 EFFICACY_CLAUSES: list[tuple[str, str]] = [
     ("presence alone does not reduce severity",
-     r"presence is not its efficacy|demonstrated efficacy"),
+     r"only on demonstrated efficacy"),
     ("there is an evidence ladder for controls",
-     r"Executed|Traced"),
+     r"\| \*\*Executed\*\*"),
     # `\*\*no\*\*` was an alternative here and it matched any bolded "no" in the file, so the
     # clause stayed green after "not sufficient" was inverted to "sufficient". Third instance
     # of the same defect (L28's `default —`, L30's blockquote wrap): a loose alternative in a
@@ -1068,9 +1084,9 @@ EFFICACY_CLAUSES: list[tuple[str, str]] = [
     ("the ladder denies severity reduction to a merely-present control",
      r"\*\*Present\*\*[^\n]*\*\*no\*\*"),
     ("the initial-state trap is named",
-     r"first[- ]call|initial\*?\*? state|empty"),
+     r"first[- ]call"),
     ("undemonstrated efficacy keeps the undiminished severity",
-     r"keeps its undiminished\s*\n?severity|undiminished"),
+     r"keeps its undiminished\s*\n?severity"),
 ]
 
 
@@ -1113,6 +1129,12 @@ POINTER_CLAUSES: list[tuple[str, str]] = [
      r"Scanners do not read comments"),
     ("a destructive remediation is not a fix",
      r"is not a fix, and a finding whose only remedy is destructive"),
+    # Added on review: Rule 1a authorises WITHDRAWAL, a stronger act than Rule 3a's
+    # reduction, and originally had a weaker gate. These two clauses fence it.
+    ("withdrawing a hit is harder than reducing one",
+     r"Withdrawing a hit is harder than reducing one"),
+    ("a withdrawn hit is still reported",
+     r"A withdrawn hit is reported as withdrawn"),
 ]
 
 
@@ -1152,7 +1174,7 @@ SUBJECT_CLAUSES: list[tuple[str, str]] = [
     ("baseline deltas must compare like with like",
      r"refuse the delta when the kinds differ"),
     ("secret scans must read ignored paths",
-     r"read ignored paths too"),
+     r"Secret and PII scans read ignored paths too"),
 ]
 
 
