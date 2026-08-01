@@ -178,6 +178,13 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
                            "\nlint:\n\truff check evals/*.py tests/*.py")),
     # The half no command comparison catches: identical commands, different environment.
     ("L34", lambda r: edit(r / "Makefile", 'PATH="$$(python3', 'NOPATH="$$(python3')),
+    # The exact edit that turned the gate off: swap the branch filter for a tag one. Reads in
+    # a diff as "stop re-running on tags" and means "stop running".
+    ("L35", lambda r: edit(r / ".github" / "workflows" / "self-audit.yml",
+                           "    branches: ['**']", "    tags-ignore: ['**']")),
+    # Removing the push trigger entirely leaves direct pushes to main unchecked.
+    ("L35", lambda r: edit(r / ".github" / "workflows" / "self-audit.yml",
+                           "  push:\n", "  workflow_dispatch:\n")),
 ]
 
 

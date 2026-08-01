@@ -7,11 +7,17 @@ name: self-audit
 
 on:
   push:
-    # Tags excluded. A tag push re-runs the gate on a commit that already ran it, and a tag
-    # placed on an older commit runs today's gate against yesterday's tree: v0.4.0 pointed at
-    # a legitimately pre-publish state, so L21 fired on placeholders that were correct at the
-    # time. A red run that says nothing about the code is worse than no run.
-    tags-ignore: ['**']
+    # `branches: ['**']` — every branch, and by omission no tags. A tag push re-runs the gate
+    # on a commit that already passed it, and a tag on an older commit runs today's gate
+    # against yesterday's tree: v0.4.0 pointed at a legitimately pre-publish state, so L21
+    # fired on placeholders that were correct when written.
+    #
+    # The obvious spelling of that intent — `tags-ignore: ['**']` alone — DISABLES THE GATE.
+    # GitHub runs a push workflow for branches only if a branch filter is absent entirely or
+    # matches; supply only tag filters and branch pushes stop matching. The result is not a
+    # red run, it is NO run, which is indistinguishable from having nothing to check.
+    # `lessons/0012`, and `L35` now refuses this shape.
+    branches: ['**']
   pull_request:
 
 jobs:
@@ -24,7 +30,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Structural self-audit (34 checks, no LLM, no network)
+      - name: Structural self-audit (35 checks, no LLM, no network)
         run: python3 evals/check_repo.py
 
       # The dashboard is generated, so a PR that adds a lesson must regenerate it. L18

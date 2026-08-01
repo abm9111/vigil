@@ -46,6 +46,7 @@ Checks:
   L32 Rule 1 says a scanner hit is a pointer to a question, not an answer
   L33 Rule 10a requires every report to name the tree it audited
   L34 the Makefile gate and the CI workflow run the same commands in the same environment
+  L35 the workflow's push trigger cannot be narrowed to nothing
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -1296,6 +1297,47 @@ def check_gate_parity(r: Report) -> None:
                       "sharing the verdict — that is exactly how lessons/0011 happened")
 
 
+def check_push_trigger(r: Report) -> None:
+    """L35 — the gate must still run on a branch push.
+
+    `lessons/0012`. Narrowing the trigger to `tags-ignore: ['**']` to stop tag pushes
+    re-running the gate silently stopped it running on branch pushes too: GitHub matches a
+    push workflow to a branch only when no branch filter is present or one matches, so
+    supplying tag filters alone leaves nothing for a branch to match.
+
+    The failure mode is the dangerous one. Not a red run — **no** run, on a repo whose README
+    carries a green badge from the last commit that did run. Every check in this file is
+    worthless the moment nothing invokes it, so this one guards the invoker.
+
+    Parsed by hand: CI installs pytest, mypy and ruff, and adding PyYAML to read six lines
+    would make the gate depend on a package to verify that the gate runs.
+    """
+    wf = ROOT / ".github" / "workflows" / "self-audit.yml"
+    if not wf.exists():
+        r.fail("L35", "no self-audit workflow — nothing runs the checks in this file")
+        return
+    text = wf.read_text(encoding="utf-8")
+    block = re.search(r"^on:\n((?:[ \t]+.*\n|\n)*)", text, re.M)
+    if block is None:
+        r.fail("L35", "the workflow declares no `on:` trigger")
+        return
+    # Comments explain this exact trap, so reading them as configuration would let the
+    # warning satisfy the check — the L34 failure again.
+    lines = [ln for ln in block.group(1).splitlines() if not ln.strip().startswith("#")]
+    push = re.search(r"^  push:\n((?:    .*\n)*)", "\n".join(lines) + "\n", re.M)
+    if push is None:
+        r.fail("L35", "the workflow does not run on push — a merge gate that only runs on "
+                      "pull_request leaves direct pushes to main unchecked")
+        return
+    body = push.group(1)
+    has_tag_filter = re.search(r"^\s+tags(-ignore)?:", body, re.M) is not None
+    has_branch_filter = re.search(r"^\s+branches(-ignore)?:", body, re.M) is not None
+    if has_tag_filter and not has_branch_filter:
+        r.fail("L35", "the push trigger filters tags but never branches, so GitHub runs it "
+                      "for NO branch push — the gate is off and the symptom is a missing "
+                      "run rather than a red one (lessons/0012)")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -1335,6 +1377,7 @@ def main() -> int:
     check_hit_is_a_pointer(r)
     check_subject_named(r)
     check_gate_parity(r)
+    check_push_trigger(r)
     return r.emit()
 
 

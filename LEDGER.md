@@ -7,7 +7,7 @@ Where VIGIL's improvements actually came from. Every row is backed by a committe
 lesson in [`lessons/`](lessons/README.md) recording something VIGIL, or its own
 self-audit, got **wrong**.
 
-**9 of 11 classes mechanized** · 11 lessons · 1 open · 1 judged unmechanizable
+**10 of 12 classes mechanized** · 12 lessons · 1 open · 1 judged unmechanizable
 
 ## Contributors
 
@@ -16,7 +16,7 @@ one shape is one class — the metric is deliberately hard to inflate.
 
 | Contributor | Classes | Lessons | Mechanized |
 |---|---|---|---|
-| Author / implementer | **5** | 5 | 5 |
+| Author / implementer | **6** | 6 | 6 |
 | ci | **3** | 3 | 3 |
 | Grok (cross-model review) | **2** | 2 | 1 |
 | Kimi (cross-model review) | **2** | 2 | 1 |
@@ -30,7 +30,7 @@ human reading carefully and one found by an automated check are very different s
 | Missed it | Times |
 |---|---|
 | Author / implementer | 9 |
-| check_repo.py (automated) | 6 |
+| check_repo.py (automated) | 7 |
 | Grok (cross-model review) | 2 |
 | RULES.md Rule 3 | 2 |
 | Harness design review | 1 |
@@ -40,6 +40,9 @@ human reading carefully and one found by an automated check are very different s
 | modes/audit.md output template | 1 |
 | Kimi (cross-model review) | 1 |
 | Makefile | 1 |
+| ci | 1 |
+| L34 | 1 |
+| review | 1 |
 
 ## Classes
 
@@ -47,6 +50,7 @@ human reading carefully and one found by an automated check are very different s
 |---|---|---|
 | a benchmark the model can read is not a benchmark | ✅ `L12 (answer-key location), run_eval.py hard refusal` | [A fixture scored 0 false positives while the answer key sat inside the audited directory](lessons/0002-contaminated-measurement.md) |
 | a checker only checks what someone thought to check | ✅ `L7, L8` | [The self-audit reported CLEAN while five real inconsistencies sat in the repo](lessons/0001-checker-clean-over-real-gaps.md) |
+| a control removed produces silence, and silence is indistinguishable from nothing to report | ✅ `L35` | [Narrowing the CI trigger to stop redundant tag runs stopped every branch run instead](lessons/0012-tidying-the-trigger-turned-the-gate-off.md) |
 | a control's presence is not its efficacy — reading is not running | ✅ `L31` | [A rate limiter was credited as a compensating control; it had never blocked a single request](lessons/0008-control-present-not-effective.md) |
 | a finding is relative to a tree, and the tree is never named | ✅ `L33` | [An audit report was headed with a commit SHA; it had audited neither that commit nor anything equal to it](lessons/0010-which-tree-was-audited.md) |
 | a measurement instrument that fails in both directions | ⏳ | [The eval reported 100% recall for an audit containing no analysis — twice, after two fixes](lessons/0005-metric-that-flatters.md) |

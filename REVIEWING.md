@@ -16,7 +16,7 @@ between two Markdown files is a functional bug — two auditors reading the same
 compute different scores.
 
 ```bash
-make check        # 34 structural checks, 164 tests, mypy, ruff — offline, no API key, ~40s
+make check        # 35 structural checks, 164 tests, mypy, ruff — offline, no API key, ~40s
 make help         # every target
 ```
 
