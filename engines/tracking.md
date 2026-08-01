@@ -58,7 +58,7 @@ mkdir -p ~/.vigil/tracking
   "cves": [
     {
       "id": "CVE-2026-XXXXX",
-      "project": "FileCodeBox",
+      "project": "{project}",
       "title": "Unauthenticated RCE via file upload",
       "severity": "CRITICAL",
       "cvss": 9.8,
@@ -164,7 +164,7 @@ Creates entry in bounties.json, returns BNT-ID.
 ### `/vigil-track add cve`
 
 ```
-/vigil-track add cve --project "FileCodeBox" --title "Unauth RCE" \
+/vigil-track add cve --project "{project}" --title "Unauth RCE" \
   --severity CRITICAL --bounty BNT-001
 ```
 
@@ -188,6 +188,9 @@ Creates entry in engagements.json, returns ENG-ID.
 ```
 
 ### `/vigil-track status`
+
+Gates below are **your** milestones in braces, not a prescribed ladder — what counts as a
+phase gate depends on whether you are chasing bounties, consulting or certification.
 
 Show dashboard:
 
@@ -225,11 +228,11 @@ PHASE PROGRESS
   Status: {ON_TRACK | BEHIND | AHEAD}
 
 GATES
-  ✓ Phase 0: FileCodeBox CVE filed
-  ✓ Phase 1: First valid report accepted
-  ○ Phase 1: $1K cumulative
-  ○ Phase 2: First consulting engagement
-  ○ Phase 2: BSCP certification
+  ✓ Phase 0: {first CVE filed}
+  ✓ Phase 1: {first valid report accepted}
+  ○ Phase 1: {cumulative revenue target}
+  ○ Phase 2: {first consulting engagement}
+  ○ Phase 2: {certification}
 ```
 
 ### `/vigil-track report`
@@ -242,7 +245,7 @@ Generate monthly summary for record-keeping:
 
 Outputs markdown summary of all activity, suitable for:
 - Personal records
-- Tax documentation (UAE freelance license)
+- Tax documentation (per your jurisdiction and business structure)
 - Investor/partner updates (if applicable)
 
 ## Data Integrity

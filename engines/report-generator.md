@@ -4,9 +4,9 @@
 
 ## Report Types
 
-### ComplianceSprint ($3.5-7.5K, 3-day delivery)
+### ComplianceSprint (tier $, 3-day delivery)
 
-**Target audience:** CTO/CISO at UAE SME/startup
+**Target audience:** CTO/CISO at an SME or startup
 **Length:** 15-25 pages
 **Tone:** Executive + technical hybrid
 
@@ -142,7 +142,7 @@ Month 1 (Medium):
 {Raw tool output, full scan logs, methodology details}
 ```
 
-### SiegeReport ($8-25K, 1-2 week delivery)
+### SiegeReport (tier $$$, 1-2 week delivery)
 
 Everything in ComplianceSprint PLUS:
 
@@ -176,7 +176,7 @@ ATTACK NARRATIVE
 {chronological story connecting findings into attack chains}
 ```
 
-### ManagedVIGIL Delta Report ($1.5-4.5K/month retainer)
+### ManagedVIGIL Delta Report (tier $, monthly retainer)
 
 See: [../modes/watch.md](../modes/watch.md) for base watch functionality.
 
@@ -231,9 +231,13 @@ NEXT SCAN: {date}
 
 ## Pricing Guide Reference
 
-| Engagement | Delivery | Price Range | VIGIL Mode |
+| Engagement | Delivery | Effort tier | VIGIL Mode |
 |------------|----------|-------------|------------|
-| ComplianceSprint | 3 days | $3,500-$7,500 | audit + compliance |
-| SiegeReport | 1-2 weeks | $8,000-$25,000 | siege (full) |
-| ManagedVIGIL | Monthly | $1,500-$4,500/mo | watch + monthly audit |
-| AIRedTeam | 1-2 weeks | $5,000-$20,000 | siege --only ai-and-ml |
+| ComplianceSprint | 3 days | $ | audit + compliance |
+| SiegeReport | 1-2 weeks | $$$ | siege (full) |
+| ManagedVIGIL | Monthly | $ recurring | watch + monthly audit |
+| AIRedTeam | 1-2 weeks | $$ | siege --only ai-and-ml |
+
+**Tiers are relative effort, not a rate card.** Figures depend on scope, jurisdiction,
+liability and who is buying, so a number published here would be wrong for almost every
+reader and would price an engagement before anyone had scoped it. Set your own.

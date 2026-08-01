@@ -46,7 +46,7 @@ enumerated suite.
 
 ## D2 — Commercial engines in a public tree
 
-**Status:** owner decision · **Raised by:** all three reviews
+**Status:** RESOLVED 2026-08-01 — genericised, both engines kept · **was:** owner decision · **Raised by:** all three reviews
 
 `engines/tracking.md` and `engines/report-generator.md` are business infrastructure, not
 auditing capability: consulting price points, a revenue tracker, bounty payouts, a tax-residency
@@ -57,7 +57,15 @@ Some consultancies do that deliberately. It should be a decision, not a side eff
 **Options:** strip both from the public tree and keep them private · genericise the pricing to
 tiers without numbers · publish as-is deliberately.
 
-**Done when:** decided and acted on. Nothing else in the repo depends on the outcome.
+**Done.** Option 2 of three: the deliverable templates stay, the figures go. Four price
+disclosures became relative effort tiers; the personal phase-gate roadmap (a named CVE, a
+certification goal, a revenue milestone) became braced placeholders; the jurisdiction-specific
+tax line and the geographic targeting line became neutral.
+
+The reasoning is in the file now, and it is not only commercial: **a published figure would be
+wrong for almost every reader** — scope, jurisdiction, liability and buyer all move it — and it
+would price an engagement before anyone had scoped it. Tiers carry the ordering, which is the
+part that generalises.
 
 ---
 
