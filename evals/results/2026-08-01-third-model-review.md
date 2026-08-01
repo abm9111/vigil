@@ -82,7 +82,7 @@ something.
 | 3 | direct attack on the checks | 2 | none |
 
 Three rounds, no decline in yield, no meaningful overlap. The automated suite has now found
-**0 of 12**.
+**0 of 13**.
 
 The honest reading is not that the checks are worthless — they catch regressions, and every one
 exists because something got past the ones before it. It is that **a check written by whoever

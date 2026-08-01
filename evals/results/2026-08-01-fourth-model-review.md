@@ -99,7 +99,7 @@ Reporting that is a result, not a failure to find something.
 | 3 | direct attack on the checks | 2 |
 | 4 | Kimi, scheduled | 6 |
 
-**Automated suite: 0 of 18.** Four rounds, no decline in yield, no meaningful overlap.
+**Automated suite: 0 of 19.** Four rounds, no decline in yield, no meaningful overlap.
 
 The finding that matters most is not on the list. Two of these were in code written hours
 earlier, one of them by someone who had that morning written the lesson stating the exact

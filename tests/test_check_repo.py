@@ -219,6 +219,12 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
                            "**Persistence:** `.vigil/ignore`, where **every entry carries an "
                            "owner and an expiry**.",
                            "**Persistence:** `.vigil/ignore` (one pattern per line).")),
+    # A quoted tally that disagrees with the table beside it. Three drifted at once, in the
+    # files most likely to be quoted at a stranger, and were caught only while drafting a
+    # public post around the figure.
+    ("L37", lambda r: edit(r / "evals" / "results" / "2026-08-01-fourth-model-review.md",
+                           "**Automated suite: 0 of 19.**",
+                           "**Automated suite: 0 of 42.**")),
 ]
 
 

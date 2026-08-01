@@ -48,6 +48,7 @@ Checks:
   L34 the Makefile gate and the CI workflow run the same commands in the same environment
   L35 the workflow's push trigger cannot be narrowed to nothing
   L36 FLAGS.md and scoring.md agree on what suppressing a finding does
+  L37 a quoted review tally matches the table it sits next to
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -1509,6 +1510,33 @@ def check_suppression_contract(r: Report) -> None:
                       "that sentence is what stops the audited party grading itself")
 
 
+def check_review_tallies(r: Report) -> None:
+    """L37 — "the suite found 0 of N" must equal the round table directly above it.
+
+    Three of these drifted at once, and they are the numbers most likely to be quoted at a
+    stranger: 12 where the table summed to 13, 18 where it summed to 19, "sixteen between
+    them" where cross-model rounds summed to 17. Caught while drafting a public post around
+    the figure — which is to say, one step from being wrong in front of an audience.
+
+    L24 already mechanizes exactly this for the check count. The same argument applies with
+    more force here: a wrong self-audit count is embarrassing, a wrong "0 of N" is the
+    project's headline claim about its own fallibility.
+    """
+    pat = re.compile(r"^\|\s*(\d+)\s*\|[^|]*\|\s*(\d+)\s*\|", re.M)
+    for f in [*sorted((ROOT / "evals" / "results").glob("*.md")), ROOT / "REVIEWING.md"]:
+        if not f.exists():
+            continue
+        text = f.read_text(encoding="utf-8")
+        rows = pat.findall(text)
+        if not rows:
+            continue
+        total = sum(int(found) for _round, found in rows)
+        for claimed in re.findall(r"0 of (\d+)", text):
+            if int(claimed) != total:
+                r.fail("L37", f"{f.relative_to(ROOT)} claims the suite found 0 of {claimed}, "
+                              f"but its own round table sums to {total}")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -1550,6 +1578,7 @@ def main() -> int:
     check_gate_parity(r)
     check_push_trigger(r)
     check_suppression_contract(r)
+    check_review_tallies(r)
     return r.emit()
 
 

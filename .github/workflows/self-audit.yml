@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Structural self-audit (36 checks, no LLM, no network)
+      - name: Structural self-audit (37 checks, no LLM, no network)
         run: python3 evals/check_repo.py
 
       # The dashboard is generated, so a PR that adds a lesson must regenerate it. L18

@@ -295,7 +295,7 @@ differs from that commit, and the egress cluster's scans are ignore-agnostic by 
 
 ## Checks that would catch the classes above
 
-`evals/check_repo.py` runs 36 structural checks. Every one was added after a real gap got past
+`evals/check_repo.py` runs 37 structural checks. Every one was added after a real gap got past
 the previous set. Known remaining blind spots, from Kimi's M11:
 
 | Class | Caught? | Note |

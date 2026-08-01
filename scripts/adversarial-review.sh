@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # adversarial-review.sh — hand this repo to an outside model and collect what it finds.
 #
-# Three rounds of this have found twelve defects that 36 checks and 176 tests found none of.
+# Four rounds of this have found nineteen defects that 37 checks and 178 tests found none of.
 # It is the highest-yield verification available here, so it should be repeatable by anyone,
 # not a thing that happened once in somebody's terminal.
 #

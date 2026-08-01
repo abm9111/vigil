@@ -15,7 +15,7 @@ of the self-audit exists to catch exactly that.
 ## Before you finish any change
 
 ```bash
-python3 evals/check_repo.py       # 36 structural checks · <1s · no LLM, no network
+python3 evals/check_repo.py       # 37 structural checks · <1s · no LLM, no network
 python3 evals/check_loadable.py   # the skill is still discoverable
 pytest tests/ -q                  # every check must be able to FAIL
 mypy && ruff check .              # config in pyproject.toml

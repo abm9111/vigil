@@ -4,9 +4,9 @@ You have been invited to review this before it goes public. This page exists so 
 useful in ten minutes instead of an hour, and so you do not spend that hour re-finding things
 that are already known.
 
-**What would help most: find a nineteenth defect.** Four cross-model reviews have found
-sixteen between them with almost no overlap, plus two found by attacking the checks directly.
-The automated suite found **none** of the eighteen. Four rounds, no decline in yield — so the
+**What would help most: find a twentieth defect.** Four cross-model reviews have found
+seventeen between them with almost no overlap, plus two found by attacking the checks directly.
+The automated suite found **none** of the nineteen. Four rounds, no decline in yield — so the
 working assumption is that more exist.
 
 ## Orient in two minutes
@@ -17,7 +17,7 @@ between two Markdown files is a functional bug — two auditors reading the same
 compute different scores.
 
 ```bash
-make check        # 36 structural checks, 164 tests, mypy, ruff — offline, no API key, ~40s
+make check        # 37 structural checks, 164 tests, mypy, ruff — offline, no API key, ~40s
 make help         # every target
 ```
 
