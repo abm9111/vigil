@@ -76,7 +76,10 @@ All of the above runs in CI. None of it needs an API key.
 run. Score a saved transcript with `--from-file` if you need to exercise it.
 
 ```bash
-python3 evals/run_eval.py --baseline --runs 3     # 2 arms per fixture — real spend
+# Control arm needs the skill physically absent — see docs/BASELINE.md
+python3 evals/run_eval.py --arm control --runs 5 --out /tmp/bl/control.json
+python3 evals/run_eval.py --arm vigil   --runs 5 --out /tmp/bl/vigil.json
+python3 evals/run_eval.py --compare /tmp/bl/control.json /tmp/bl/vigil.json
 ```
 
 This is the one measurement that anchors all the others: the same fixtures and the same scorer,

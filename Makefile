@@ -48,7 +48,12 @@ eval:
 
 ## baseline: with/without-VIGIL comparison — TWO CLI arms per fixture, real spend
 baseline:
-	python3 evals/run_eval.py --baseline --runs 3
+	@echo 'Read docs/BASELINE.md first — every guard there exists because the obvious'
+	@echo 'version produced a confident wrong number.'
+	@echo ''
+	@echo '  scripts/run-baseline.sh <outdir> 5'
+	@echo ''
+	@echo '--runs 5 is a FLOOR: the same arm has returned 0% and 83% on consecutive draws.'
 
 ## learn: aggregate local run records into learning signals
 learn:

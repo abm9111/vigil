@@ -138,7 +138,10 @@ dismissing it because this repo is more thorough would be assuming the conclusio
 **Now runnable:**
 
 ```bash
-python3 evals/run_eval.py --baseline --runs 3
+# Control arm needs the skill physically absent — see docs/BASELINE.md
+python3 evals/run_eval.py --arm control --runs 5 --out /tmp/bl/control.json
+python3 evals/run_eval.py --arm vigil   --runs 5 --out /tmp/bl/vigil.json
+python3 evals/run_eval.py --compare /tmp/bl/control.json /tmp/bl/vigil.json
 ```
 
 Two arms over the same fixtures with the same scorer: VIGIL, and a control with no skills
