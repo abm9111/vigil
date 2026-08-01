@@ -33,7 +33,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -413,7 +412,29 @@ def control_prompt() -> str:
     return m.group(1).strip()
 
 
-def assert_skill_invisible(cfg: Path, model: str | None) -> None:
+def _vigil_installed() -> Path | None:
+    """Where VIGIL is installed, or None. Follows symlinks, which rglob does not.
+
+    `Path.rglob` will not descend into a symlinked directory, and a skill under development is
+    almost always a symlink into a working copy — this one is. So the filesystem guard was
+    blind in the single most common install shape, and only the model probe was doing any
+    work. Scan entries directly instead.
+    """
+    root = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude")) / "skills"
+    if not root.is_dir():
+        return None
+    for entry in list(root.iterdir()) + [d for e in root.iterdir() if e.is_dir()
+                                         for d in e.iterdir() if d.is_dir()]:
+        skill = entry / "SKILL.md"
+        if not skill.is_file():
+            continue
+        head = skill.read_text(encoding="utf-8", errors="replace")[:400]
+        if re.search(r"^name:\s*[\"']?vigil[\"']?\s*$", head, re.M):
+            return entry
+    return None
+
+
+def assert_skill_invisible(model: str | None) -> None:
     """Prove the control cannot see VIGIL before trusting a single control number.
 
     Without this the harness has a silent, catastrophic failure mode: if the control inherits a
@@ -427,14 +448,25 @@ def assert_skill_invisible(cfg: Path, model: str | None) -> None:
                            "Output names only, one per line, nothing else."]
     if model:
         cmd += ["--model", model]
-    r = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=300, check=False,
-        env={**os.environ, "CLAUDE_CONFIG_DIR": str(cfg)},
-    )
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300, check=False)
     if r.returncode != 0:
         print(f"harness error: control probe exited {r.returncode}: {r.stderr[-400:]}",
               file=sys.stderr)
         sys.exit(2)
+    # Defence in depth, because the name check below is weaker than it looks: Claude Code
+    # lists a skill by its DIRECTORY name, so a copy stashed as `.baseline-stash` would be
+    # fully discoverable and named nothing like "vigil". That exact contamination happened
+    # here and was caught only because the stash name coincidentally contained "vigil".
+    #
+    # So: no directory anywhere under the skills tree may declare `name: vigil`, whatever it
+    # is called on disk.
+    found = _vigil_installed()
+    if found is not None:
+        print(f"harness error: {found} still declares `name: vigil` — the control arm would "
+              "see the skill under whatever the directory is called, and the delta would be "
+              "meaningless.", file=sys.stderr)
+        sys.exit(2)
+
     if "vigil" in r.stdout.lower():
         print("harness error: the control arm can still see the VIGIL skill, so both arms "
               "would be the treatment arm and the delta would be meaningless.\n"
@@ -442,15 +474,59 @@ def assert_skill_invisible(cfg: Path, model: str | None) -> None:
         sys.exit(2)
 
 
-def run_control(fixture: Path, model: str | None, cfg: Path) -> str:
-    """Run the fixture with no skills discoverable — the without-VIGIL arm."""
+def assert_skill_visible(model: str | None) -> None:
+    """The treatment arm must prove the skill IS installed before it means anything.
+
+    Its absence produced a 0% recall that the harness reported as a real result — "VIGIL beat
+    the control on 0/2 fixtures" — when the truth was that `/vigil` resolved to nothing. A
+    number from an arm that could not possibly work is worse than no number, because it looks
+    like a finding (`lessons/0002`).
+
+    Symmetric with assert_skill_invisible: each arm proves its own precondition.
+    """
+    if _vigil_installed() is None:
+        print("harness error: the treatment arm cannot find an installed VIGIL skill. Its "
+              "findings would be a bare model's, and 0% recall would read as a VIGIL failure "
+              "rather than a missing install.", file=sys.stderr)
+        sys.exit(2)
+
+    cmd = ["claude", "-p", "List the names of every skill available to you. "
+                           "Output names only, one per line, nothing else."]
+    if model:
+        cmd += ["--model", model]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300, check=False)
+    if r.returncode != 0 or "vigil" not in r.stdout.lower():
+        print("harness error: VIGIL is on disk but the model does not list it — the treatment "
+              f"arm would measure a bare model.\n  probe: {r.stdout.strip()[:200]!r}",
+              file=sys.stderr)
+        sys.exit(2)
+
+
+def _dump(results: dict[str, list[Result]], path: Path) -> None:
+    path.write_text(json.dumps(
+        {k: [{"recall": r.recall, "false_positives": r.false_positives,
+              "missed": r.missed, "detected": r.detected} for r in v]
+         for k, v in results.items()}, indent=2), encoding="utf-8")
+    print(f"wrote {path}")
+
+
+def run_control(fixture: Path, model: str | None) -> str:
+    """Run the fixture with VIGIL not installed — the without-VIGIL arm.
+
+    Isolation is PHYSICAL (the skill is not on disk during this arm), not environmental.
+    The first version pointed CLAUDE_CONFIG_DIR at a fresh directory, which also severs
+    credentials — the CLI reports "Not logged in" and the arm cannot run at all. And
+    `--disable-slash-commands` is not isolation either: it blocks invocation while the skill
+    stays in context, so the control would silently have been a second treatment arm.
+
+    Caller is responsible for making the skill absent; assert_skill_invisible() verifies it.
+    """
     cmd = ["claude", "-p", control_prompt(), "--allowedTools", "Bash,Read,Glob,Grep"]
     if model:
         cmd += ["--model", model]
     try:
         r = subprocess.run(
             cmd, cwd=fixture, capture_output=True, text=True, timeout=900, check=False,
-            env={**os.environ, "CLAUDE_CONFIG_DIR": str(cfg)},
         )
     except subprocess.TimeoutExpired:
         print(f"harness error: control timed out on {fixture.name}", file=sys.stderr)
@@ -522,41 +598,93 @@ def report(name: str, res: Result) -> None:
         print(f"   DEFLATED        {d}")
 
 
-def run_baseline(names: list[str], model: str | None, runs: int) -> int:
-    """Two arms, same fixtures, same scorer. Answers: does the skill beat its absence?
+def run_arm(names: list[str], arm: str, model: str | None, runs: int, out: Path) -> int:
+    """Run ONE arm and write its scores. The harness mutates nothing.
 
-    Every recall number this harness has ever produced was unanchored — for all it knew, a bare
-    model found the same defects and the skill changed nothing. This is the measurement that
-    settles it, and it is allowed to come back negative.
+    The previous design ran both arms inside one process, so isolating the control meant
+    isolating the treatment arm too — the wrapper moved the skill aside and both arms ran
+    without it. Splitting the arms makes each one's precondition explicit and checkable.
     """
-    total = len(names) * runs * 2
-    print(f"Baseline comparison: {len(names)} fixture(s) x {runs} run(s) x 2 arms "
-          f"= {total} CLI invocations. This costs real money and is never run in CI.\n")
+    if arm == "control":
+        assert_skill_invisible(model)
+        print("control arm: skill confirmed ABSENT\n")
+    else:
+        assert_skill_visible(model)
+        print("treatment arm: skill confirmed PRESENT\n")
 
-    with tempfile.TemporaryDirectory() as tmp:
-        cfg = Path(tmp) / "empty-config"
-        (cfg / "skills").mkdir(parents=True)
-        assert_skill_invisible(cfg, model)
-        print("control arm confirmed skill-free\n")
+    results: dict[str, list[Result]] = {}
+    for name in names:
+        fx = FIXTURES / name
+        expected = json.loads((EXPECTED / f"{name}.json").read_text(encoding="utf-8"))
+        raw = [run_control(fx, model) if arm == "control" else run_vigil(fx, model)
+               for _ in range(runs)]
+        results[name] = [score(expected, parse_findings(r)) for r in raw]
+        rec = median([r.recall for r in results[name]])
+        fps = median([float(len(r.false_positives)) for r in results[name]])
+        print(f"  {name:<24} recall {rec:>4.0%}   false positives {fps:>3.0f}")
+    _dump(results, out)
+    return 0
 
-        improved: list[str] = []
-        for name in names:
-            fx = FIXTURES / name
-            expected = json.loads((EXPECTED / f"{name}.json").read_text(encoding="utf-8"))
-            control = [score(expected, parse_findings(run_control(fx, model, cfg)))
-                       for _ in range(runs)]
-            vigil = [score(expected, parse_findings(run_vigil(fx, model)))
-                     for _ in range(runs)]
-            if report_delta(name, control, vigil):
-                improved.append(name)
 
-    print(f"\nVIGIL beat the control on {len(improved)}/{len(names)} fixture(s).")
-    if len(improved) < len(names):
-        print("Fixtures with no improvement are a result about VIGIL, not a harness failure. "
-              "Strengthening the control is allowed; weakening it is not.")
-    # Deliberately always 0. This is a measurement, not a gate — wiring it to an exit code
-    # would create pressure to weaken the control on a red build, which is precisely the
-    # threshold-lowering failure L12 exists to prevent.
+def implausible(name: str, expected: dict[str, Any], results: list[Result]) -> str | None:
+    """Flag numbers that look like a broken arm rather than a real score.
+
+    This is the check that was missing when the harness printed "VIGIL beat the control on
+    0/2 fixtures". The treatment arm had scored 0% recall on a fixture seeding six defects —
+    not because VIGIL failed, but because a wrapper bug meant the skill was not installed
+    while that arm ran. The number was real; what it measured was nothing.
+
+    A warning, deliberately, not a refusal. Discarding a low score automatically would be the
+    thumb on the scale this project refuses everywhere else — a genuine null result is the
+    most valuable output this harness can produce. But an unremarked 0% is how a harness bug
+    gets published as a finding about the tool.
+    """
+    seeded = len(expected.get("must_detect", []))
+    if not seeded or not results:
+        return None
+    if all(r.recall == 0.0 for r in results):
+        return (f"recall 0% across every run on a fixture seeding {seeded} defect(s). That is "
+                "almost always an arm that could not run — a missing install, a parse failure, "
+                "a CLI error. Confirm the arm log said 'skill confirmed PRESENT/ABSENT' and "
+                "that findings parsed, before reading this as a result about VIGIL.")
+    return None
+
+
+def compare_arms(control_path: Path, vigil_path: Path) -> int:
+    """Pure comparison of two saved arms. No CLI calls, so it is free to re-run."""
+    c = json.loads(control_path.read_text(encoding="utf-8"))
+    v = json.loads(vigil_path.read_text(encoding="utf-8"))
+    shared = sorted(set(c) & set(v))
+    if not shared:
+        print("no fixtures in common between the two arms", file=sys.stderr)
+        return 2
+
+    def to_results(rows: list[dict[str, Any]]) -> list[Result]:
+        return [Result(recall=r["recall"], false_positives=r["false_positives"]) for r in rows]
+
+    improved, suspect = [], []
+    for n in shared:
+        v_res = to_results(v[n])
+        if report_delta(n, to_results(c[n]), v_res):
+            improved.append(n)
+        spec_path = EXPECTED / f"{n}.json"
+        spec = (json.loads(spec_path.read_text(encoding="utf-8"))
+                if spec_path.exists() else {})
+        warn = implausible(n, spec, v_res)
+        if warn:
+            print(f"   ⚠️  {warn}")
+            suspect.append(n)
+
+    counted = [n for n in shared if n not in suspect]
+    print(f"\nVIGIL beat the control on {len(improved)}/{len(counted)} measurable fixture(s).")
+    if suspect:
+        print(f"{len(suspect)} fixture(s) EXCLUDED as unmeasured: {suspect}. A harness that "
+              "reports a broken arm as a capability finding is the defect this exists to "
+              "prevent — it has already happened once.")
+    if len(improved) < len(shared):
+        print("Fixtures with no improvement are a result about VIGIL, not a harness failure —"
+              "\nPROVIDED both arms verified their preconditions. Check the arm logs said "
+              "\n'skill confirmed ABSENT' and 'skill confirmed PRESENT' before believing this.")
     return 0
 
 
@@ -565,9 +693,11 @@ def main() -> int:
     ap.add_argument("--fixture", help="run a single fixture by directory name")
     ap.add_argument("--from-file", help="score a saved transcript instead of invoking claude")
     ap.add_argument("--model", help="model override passed to claude -p")
-    ap.add_argument("--baseline", action="store_true",
-                    help="also run a without-VIGIL control arm and print the delta "
-                         "(doubles the API cost — see evals/baseline-prompt.md)")
+    ap.add_argument("--arm", choices=("control", "vigil"),
+                    help="run ONE arm and save its scores (see evals/baseline-prompt.md)")
+    ap.add_argument("--out", type=Path, help="where --arm writes its scores")
+    ap.add_argument("--compare", nargs=2, type=Path, metavar=("CONTROL", "VIGIL"),
+                    help="compare two saved arms — free, no CLI calls")
     ap.add_argument("--runs", type=int, default=1, metavar="N",
                     help="runs per arm; >1 reports a range as well as a median")
     args = ap.parse_args()
@@ -575,9 +705,10 @@ def main() -> int:
     if args.runs < 1:
         print("harness error: --runs must be at least 1", file=sys.stderr)
         return 2
-    if args.baseline and args.from_file:
-        print("harness error: --baseline invokes the CLI twice per run and cannot score a "
-              "saved transcript", file=sys.stderr)
+    if args.compare:
+        return compare_arms(*args.compare)
+    if args.arm and not args.out:
+        print("harness error: --arm needs --out", file=sys.stderr)
         return 2
 
     if not FIXTURES.is_dir() or not EXPECTED.is_dir():
@@ -595,8 +726,8 @@ def main() -> int:
         print("harness error: --from-file requires exactly one --fixture", file=sys.stderr)
         return 2
 
-    if args.baseline:
-        return run_baseline(names, args.model, args.runs)
+    if args.arm:
+        return run_arm(names, args.arm, args.model, args.runs, args.out)
 
     ok = True
     for name in names:

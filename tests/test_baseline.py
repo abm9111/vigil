@@ -20,7 +20,13 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "evals"))
 
-from run_eval import Result, control_prompt, median, report_delta  # noqa: E402
+from run_eval import (  # noqa: E402
+    Result,
+    control_prompt,
+    implausible,
+    median,
+    report_delta,
+)
 
 
 def res(recall: float, fps: int) -> Result:
@@ -122,13 +128,58 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_baseline_refuses_a_saved_transcript() -> None:
-    """--from-file scores one arm; a comparison needs two, and silently scoring the same
-    transcript twice would print a delta of exactly zero."""
-    r = run_cli("--baseline", "--from-file", "x.txt", "--fixture", "clean-control")
-    assert r.returncode == 2 and "cannot score a saved transcript" in r.stderr
+def test_arm_requires_an_output_path() -> None:
+    """--arm writes scores for later comparison; without --out the run is spent and lost."""
+    r = run_cli("--arm", "control", "--fixture", "clean-control")
+    assert r.returncode == 2 and "needs --out" in r.stderr
+
+
+def test_compare_is_free_and_needs_no_cli(tmp_path: Path) -> None:
+    """The comparison step must never invoke the model. A scoring bug should cost a re-run of
+    arithmetic, not a re-measurement — the arms are the expensive part."""
+    import json as _json
+    a = tmp_path / "c.json"
+    b = tmp_path / "v.json"
+    a.write_text(_json.dumps({"f": [{"recall": 0.4, "false_positives": ["x"],
+                                     "missed": [], "detected": []}]}))
+    b.write_text(_json.dumps({"f": [{"recall": 0.8, "false_positives": [],
+                                     "missed": [], "detected": []}]}))
+    r = run_cli("--compare", str(a), str(b))
+    assert r.returncode == 0
+    assert "+40%" in r.stdout and "1/1" in r.stdout
 
 
 def test_runs_must_be_positive() -> None:
-    r = run_cli("--baseline", "--runs", "0")
+    r = run_cli("--arm", "control", "--out", "/dev/null", "--runs", "0")
     assert r.returncode == 2
+
+
+# ─────────────────────────────────────────── the check that would have caught the void run
+
+
+def test_zero_recall_on_a_seeded_fixture_is_flagged_as_unmeasured() -> None:
+    """The exact scenario that shipped a false headline.
+
+    A treatment arm scored 0% recall because the skill was not installed while it ran, and the
+    harness printed "VIGIL beat the control on 0/2 fixtures" as a finding about VIGIL.
+    """
+    spec = {"must_detect": [{"id": f"d{i}"} for i in range(6)]}
+    assert implausible("f", spec, [Result(recall=0.0)]) is not None
+
+
+def test_a_genuine_low_score_is_NOT_flagged() -> None:
+    """The line that matters. Excluding a disappointing result would be the thumb on the scale
+    this project refuses everywhere else — a null result is the most valuable output here."""
+    spec = {"must_detect": [{"id": f"d{i}"} for i in range(6)]}
+    assert implausible("f", spec, [Result(recall=0.17)]) is None
+
+
+def test_partial_zero_is_not_flagged() -> None:
+    """One zero run among several is variance, not a broken arm."""
+    spec = {"must_detect": [{"id": "d"}]}
+    assert implausible("f", spec, [Result(recall=0.0), Result(recall=0.8)]) is None
+
+
+def test_clean_control_is_never_flagged() -> None:
+    """A fixture seeding nothing SHOULD score 0 recall — that is its purpose, not a fault."""
+    assert implausible("clean-control", {"must_detect": []}, [Result(recall=0.0)]) is None
