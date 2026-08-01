@@ -51,7 +51,7 @@ GitHub Code Scanning, Azure DevOps, and many CI tools consume SARIF natively.
     "tool": {
       "driver": {
         "name": "VIGIL",
-        "version": "0.4.0",
+        "version": "0.5.0",
         "informationUri": "https://vigil.example/",
         "rules": [
           {
@@ -122,7 +122,7 @@ Simpler format for custom integrations:
 
 ```json
 {
-  "vigil_version": "0.4.0",
+  "vigil_version": "0.5.0",
   "timestamp": "2026-03-27T10:30:00Z",
   "commit": "abc1234",
   "mode": "watch",

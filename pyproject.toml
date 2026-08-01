@@ -6,7 +6,7 @@
 # repo agrees with it.
 [project]
 name = "vigil"
-version = "0.4.0"
+version = "0.5.0"
 description = "Codebase quality and compliance audit skill for Claude Code"
 requires-python = ">=3.11"
 

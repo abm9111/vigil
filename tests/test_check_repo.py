@@ -130,7 +130,7 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
                            "## What was believed",
                            "Seen at /Users/alice/work/acme/src.\n\n## What was believed")),
     ("L20", lambda r: edit(r / "engines" / "ci-adapter.md",
-                           '"vigil_version": "0.4.0"', '"vigil_version": "9.9.9"')),
+                           '"vigil_version": "0.5.0"', '"vigil_version": "9.9.9"')),
     ("L22", lambda r: edit(r / "SKILL.md", "name: vigil", "nom: vigil")),
     ("L23", lambda r: edit(r / "evals" / "assertions" / "vigil.json",
                            '"id": 2,', '"id": 1,')),

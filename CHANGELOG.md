@@ -3,6 +3,67 @@
 Notable changes. Format loosely follows [Keep a Changelog](https://keepachangelog.com/);
 versions are not yet semantic — this is pre-1.0 and the audit output format may change.
 
+## [0.5.0] — 2026-08-01
+
+The release where the project got measured by people who did not write it, and lost.
+
+### Added
+- **One-line installer** (`install.sh`) that *verifies* rather than announcing success: it runs
+  `check_loadable.py` and exits non-zero if the skill is undiscoverable. Wrapped in `main()`
+  so a truncated download cannot execute a half-script.
+- **Rule 1a — a scanner hit is a pointer to a question, not an answer** (`L32`). Tool output
+  locates something to investigate; treating it as a settled finding is how a scanner's false
+  positive becomes an auditor's HIGH.
+- **Rule 3a — a control's presence is not its efficacy** (`L31`). A control may only reduce
+  severity on demonstrated effect, and never below a floor Rule 7 fences.
+- **Rule 10a — every report names the tree it audited** (`L33`). The same repository returned
+  32, 1 and 0 secret findings depending on whether the working tree, history or tracked tree
+  was scanned. All three were correct; only one answered the question the report claimed to be
+  answering (`lessons/0010`).
+- **Preflight resolves tools inside the subject's environment** (`L30`), not the auditor's.
+- **`corpus/`** — the first contributed bundle, from a real run against code this project did
+  not write, alongside `proof/0003`.
+- **`REVIEWING.md`** — what is closed, what is deliberately open, ranked by risk, for people
+  reading this adversarially.
+- **`docs/BASELINE.md`** and `scripts/run-baseline.sh` — the with/without-VIGIL comparison,
+  with every guard's reason written down, because the obvious version of each one produced a
+  confident wrong number.
+- **`L34`** — the Makefile gate and the CI workflow must run the same commands in the same
+  environment.
+- **Code of conduct**, self-audit badge, GitHub Discussions.
+
+### Changed
+- The run-record schema was **rebuilt against the first real record**, having failed it on
+  100+ counts. A schema written before seeing one real instance passes every self-test and
+  fails on first contact (`lessons/0007`).
+- The baseline harness split into `--arm control` / `--arm vigil` / `--compare`. One process
+  meant isolating the control isolated everything: both arms ran without the skill, the
+  treatment arm scored 0%, and the harness reported *"VIGIL beat the control on 0/2 fixtures."*
+- Commercial and comparison material removed from the skill's documentation (**D2**).
+
+### Fixed
+- **Eight defects found by two cross-model reviews, of which the 33 checks and 160 tests found
+  zero.** Grok: rule-composition holes where Rule 1a let a finding be dropped more cheaply
+  than Rule 3a let one be reduced, plus four prose checks whose regexes matched their own
+  inverted text. Kimi: the privacy gate **failing open three ways** — an unanchored `pattern`
+  under `re.search`, an empty `{}` schema constraining nothing, and `$ref` resolving only one
+  step — and an installer `git reset --hard` destroying uncommitted work. Full record in
+  `evals/results/2026-08-01-cross-model-review.md`.
+- The control-arm guard probed the paid CLI before its own free filesystem check, so CI was red
+  for three commits while `make check` was green (`lessons/0011`). `make test` now runs with
+  CI's `PATH`.
+- `L21` no longer flags documentation that *names* a placeholder as one that *uses* it.
+
+### Known limitations
+- **D5 — whether VIGIL beats a competent bare prompt is still unanswered.** Not for lack of
+  tooling: the same arm, on the same fixture, with identical code, returned **0% and 83%
+  recall** on consecutive draws. The harness's variance exceeds the effect it measures, so
+  every single-run number here — including the enforced `min_recall: 0.8` — is a draw from a
+  distribution. Needs `--runs 5` minimum and fixtures this project did not write.
+- **D1 — 5 of 11 clusters carry scoring weight while requiring no tool**, so much of the
+  weighted average is unevidenced by construction. Read `docs/OPEN-DESIGN.md` before relying
+  on a VIGIL score.
+
 ## [0.4.0] — 2026-07-31
 
 The release where the project started producing its own evidence.
@@ -47,4 +108,5 @@ The release where the project started producing its own evidence.
   documentation (`lessons/0006`). `L19` now scans contributed material for paths, hosts,
   emails and key-shaped strings.
 
+[0.5.0]: https://github.com/abm9111/vigil/releases/tag/v0.5.0
 [0.4.0]: https://github.com/abm9111/vigil/releases/tag/v0.4.0

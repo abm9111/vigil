@@ -15,7 +15,7 @@ A wrapper around run records, plus the one identity field the system needs:
 {
   "schema_version": 1,
   "contributor": "your-handle",
-  "vigil_version": "0.4.0",
+  "vigil_version": "0.5.0",
   "records": [ { "...": "run records from your .vigil/runs/" } ]
 }
 ```
