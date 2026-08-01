@@ -59,7 +59,15 @@ OUT="${OUT:-$REPO/review-$ENGINE-$STAMP.md}"
 
 # A throwaway clone, so a reviewer that ignores "read only" cannot touch the working tree.
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/vigil-review-XXXXXX")"
-cleanup() { rm -rf "$WORK"; }
+ERRLOG="${OUT%.md}.stderr.log"
+# Keep the engine's stderr beside the verdict on the way out. The first scheduled run of this
+# failed, the guards correctly refused to open an issue — and the diagnosis was gone, because
+# cleanup took the log with it. A run you cannot diagnose has to be paid for twice; that is
+# already written down under "save the raw transcript of every run".
+cleanup() {
+  [ -s "$WORK/err.log" ] && cp "$WORK/err.log" "$ERRLOG" 2>/dev/null
+  rm -rf "$WORK"
+}
 trap cleanup EXIT INT TERM HUP
 
 git clone --quiet --no-hardlinks "$REPO" "$WORK/repo" || { echo "clone failed" >&2; exit 70; }
@@ -92,9 +100,20 @@ rc=$?
 # like a clean review. An empty verdict is a TOOLING RESULT, never a finding — the first run
 # of this exited 0 with a zero-length verdict because the default model was not available on
 # the account, and "no findings" was one careless step from being reported as good news.
+# Exit 3 means "this engine could not run", which is a different fact from "this engine ran
+# and something is wrong" (exit 2). A caller rotating engines should retry the first and stop
+# on the second — collapsing them would either retry a real fault three times, or let a quota
+# reset look like a defect-free month.
+if grep -qiE "usage limit|rate.?limit|quota|insufficient_quota|too many requests" \
+        "$WORK/err.log" 2>/dev/null; then
+  echo "engine '$ENGINE' is out of quota — no review ran, and that is not a clean result" >&2
+  grep -iE "usage limit|quota" "$WORK/err.log" | tail -1 >&2
+  echo "  full: $ERRLOG" >&2
+  exit 3
+fi
 if [ $rc -ne 0 ]; then
   echo "engine exited $rc — verdict not trustworthy" >&2
-  sed -n '$p' "$WORK/err.log" >&2
+  tail -3 "$WORK/err.log" >&2; echo "  full: $ERRLOG" >&2
   exit 2
 fi
 if grep -qiE '"type": *"(error|invalid_request_error)"|is not supported when using' "$WORK/err.log" 2>/dev/null; then
@@ -105,7 +124,7 @@ fi
 words=$(wc -w <"$OUT" | tr -d ' ')
 if [ "$words" -lt 80 ]; then
   echo "verdict is $words words — that is a broken run, not a clean repository." >&2
-  echo "  stderr tail:" >&2; tail -3 "$WORK/err.log" >&2
+  echo "  stderr tail:" >&2; tail -3 "$WORK/err.log" >&2; echo "  full: $ERRLOG" >&2
   exit 2
 fi
 
