@@ -59,6 +59,12 @@ Name the class, never the system.
 
 See [REVIEWING.md](REVIEWING.md).
 
+## Conduct
+
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — Contributor Covenant 2.1, plus two clauses this
+project needs: never send us a real system's weaknesses, and evidence that VIGIL was wrong is
+the contribution, not an attack on the project.
+
 ## Working on the code
 
 ```bash
