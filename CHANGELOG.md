@@ -109,4 +109,6 @@ The release where the project started producing its own evidence.
   emails and key-shaped strings.
 
 [0.5.0]: https://github.com/abm9111/vigil/releases/tag/v0.5.0
-[0.4.0]: https://github.com/abm9111/vigil/releases/tag/v0.4.0
+<!-- 0.4.0 predates tagging and points at its final commit. A tag placed there retroactively
+     would run today's gate against a tree that was correctly not yet publish-ready. -->
+[0.4.0]: https://github.com/abm9111/vigil/commit/3bbe3a88a6fccfdd618678e385a3f0cda63b8514

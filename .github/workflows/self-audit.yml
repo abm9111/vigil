@@ -7,6 +7,11 @@ name: self-audit
 
 on:
   push:
+    # Tags excluded. A tag push re-runs the gate on a commit that already ran it, and a tag
+    # placed on an older commit runs today's gate against yesterday's tree: v0.4.0 pointed at
+    # a legitimately pre-publish state, so L21 fired on placeholders that were correct at the
+    # time. A red run that says nothing about the code is worse than no run.
+    tags-ignore: ['**']
   pull_request:
 
 jobs:
