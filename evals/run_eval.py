@@ -618,6 +618,15 @@ def run_arm(names: list[str], arm: str, model: str | None, runs: int, out: Path)
         expected = json.loads((EXPECTED / f"{name}.json").read_text(encoding="utf-8"))
         raw = [run_control(fx, model) if arm == "control" else run_vigil(fx, model)
                for _ in range(runs)]
+        # Save the transcripts beside the scores. A 0% recall is ambiguous between "the tool
+        # missed everything" and "the scorer did not match what it found", and without the raw
+        # output the only way to tell them apart is to pay for the run again. That happened:
+        # an arm scored 0% while emitting three findings, and the question of which had failed
+        # could not be answered from the artefacts.
+        tdir = out.parent / f"{arm}-transcripts"
+        tdir.mkdir(parents=True, exist_ok=True)
+        for i, r in enumerate(raw):
+            (tdir / f"{name}.{i}.txt").write_text(r, encoding="utf-8")
         results[name] = [score(expected, parse_findings(r)) for r in raw]
         rec = median([r.recall for r in results[name]])
         fps = median([float(len(r.false_positives)) for r in results[name]])

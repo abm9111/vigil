@@ -112,8 +112,17 @@ It needs an argument, recorded, not a quiet edit.
 
 ## D5 — Does the skill beat its own absence?
 
-**Status:** measurable since 2026-07-31, **not yet measured** · **Raised by:** a survey of
-comparable repos
+**Status:** attempted 2026-08-01, **still unanswered — blocked on sample size, not tooling**
+· **Raised by:** a survey of comparable repos
+
+**What the first attempt established.** The same arm, same fixture, identical code, run twice:
+**0% and 83% recall.** The variance is larger than the effect the harness was built to detect,
+so `--runs 1` measures the draw. That also means `min_recall: 0.8` — which `L12` protects in
+code — is on this evidence a coin flip on unchanged code. Full write-up:
+[`../evals/results/2026-08-01-baseline-variance.md`](../evals/results/2026-08-01-baseline-variance.md).
+
+Needs `--runs 5` per arm minimum (20+ invocations), and fixtures that this project did not
+write.
 
 Every recall number this project has published was unanchored. The harness scored VIGIL
 against fixtures and reported 80%, but nothing established what a bare model scores on the same

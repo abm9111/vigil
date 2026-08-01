@@ -1,0 +1,221 @@
+{
+  "report": "VIGIL audit",
+  "project": "data-export-pipeline",
+  "subject": "bc5368c (fixture subtree clean; gitignored export/ was empty at audit start; builds executed in a temp copy, fixture untouched)",
+  "date": "2026-08-01",
+  "mode": "audit",
+  "flags": ["--format json"],
+  "target": "evals/fixtures/data-export-pipeline",
+  "preflight": {
+    "stack": "Python 3.14 (pandas 2.3.3, openpyxl 3.1.5, pyarrow 23.0.1) · no manifest declaring dependencies · no JS · no Docker · no contracts",
+    "interpreter_resolution": "python3, mypy, and all imports resolve to <ambient-env> — the ambient environment that would actually run build_export.py, since the project declares no environment of its own. mypy falsifiability verified (probe file produced 1 error, exit 1).",
+    "tools": {
+      "available": {
+        "git": "2.54.0", "ruff": "0.15.10", "mypy": "2.1.0", "bandit": "1.9.4",
+        "pip-audit": "2.9.0", "gitleaks": "8.30.1", "trufflehog": "3.95.9", "detect-secrets": "1.5.47"
+      },
+      "missing": { "semgrep": "optional: security → brew install semgrep" }
+    },
+    "coverage": {
+      "security": { "required_ran": "4/4 (bandit, pip-audit, gitleaks, git)", "ceiling": 100 },
+      "code-health": { "required_ran": "2/2 (ruff, mypy)", "ceiling": 100 },
+      "egress": { "required_ran": "1/1 (git)", "ceiling": 100 },
+      "performance": { "required_ran": "no required tools declared; grep suite executed", "ceiling": 100, "caveat": "no probe that can fail — treat as upper bound per engines/preflight.md" },
+      "compliance": { "required_ran": "no required tools declared; file checks executed", "ceiling": 100, "caveat": "no probe that can fail — treat as upper bound per engines/preflight.md" }
+    },
+    "notes": [
+      "Secret scans ran ignore-agnostic (gitleaks dir mode over working tree incl. ignored paths). History sweep limited to the fixture subtree of the host repo; no leaks in working tree.",
+      "pip-audit ran against the pinned versions of the packages the pipeline actually imports (pandas, openpyxl, pyarrow, numpy + transitive): 0 known vulnerabilities."
+    ]
+  },
+  "scope": {
+    "audited": ["security", "code-health", "performance", "compliance", "egress"],
+    "na": {
+      "data": "N/A: no migrations/, no ORM imports, no *.sql, no schema.prisma (whole target searched)",
+      "api": "N/A: no route/handler files, no openapi.*, no *.proto (whole target searched)",
+      "infra": "N/A: no Dockerfile, no *.tf, no CI workflows, no k8s/ (whole target searched)",
+      "frontend": "N/A: no *.tsx/*.jsx/*.vue/*.svelte/index.html (whole target searched)",
+      "ai-ml": "N/A as code: no *.ipynb, no torch/sklearn/openai/anthropic imports. Model OUTPUT present as data (enrichment.json) — handled by egress cluster",
+      "blockchain": "N/A: no *.sol, no *.vy, no foundry.toml/Anchor.toml (whole target searched)"
+    },
+    "ne": [],
+    "out_of_scope": "Host repo (vigil) outside evals/fixtures/data-export-pipeline; eval expected-findings files deliberately not read to keep this run blind."
+  },
+  "correlated_findings": [
+    {
+      "id": "VIGIL-CORR-001",
+      "severity": "HIGH",
+      "pattern": "TRUST_LAUNDERING",
+      "primary_cluster": "EGRESS",
+      "penalty": 10,
+      "narrative": "summary and recommended_action (2 rows each) are qwen3-14b-instruct-q4 output, not analyst data, and the partner-facing README documents them as 'Segment description' and 'Suggested next step for this segment' — identically to the source-of-truth columns beside them. The bundle leaves via a partner data exchange (org boundary). The _generated_by/_generated_at columns do ship in the CSV/XLSX, but the README's column table documents only 7 of the 10 shipped columns and never mentions generation, so the one document the recipient will actually read presents model prose as authoritative guidance from the source organisation.",
+      "contributing": [
+        { "id": "VIGIL-EGRESS-006", "severity": "MEDIUM", "what": "Model-generated prose fields shipped across an org boundary", "where": "enrichment.json:7 (_generated_by: qwen3-14b-instruct-q4) merged at build_export.py:82, shipped at build_export.py:85-86" },
+        { "id": "VIGIL-EGRESS-007", "severity": "MEDIUM", "what": "Recipient README omits the generated columns and any generation caveat", "where": "build_export.py:48-71 (recipient_readme documents 7 of 10 shipped columns)" }
+      ],
+      "evidence": "Executed: built the bundle; export/segments.csv header contains _generated_by,_generated_at; shipped README column table lists 7 columns and contains no mention of model generation.",
+      "why": "A recipient has no way to tell generated content from sourced content, and acting on 'Trigger the win-back sequence' as if it were the source org's guidance is exactly the failure — no attacker required.",
+      "fix": "In recipient_readme(): document all shipped columns, and add a 'Generated content' section stating that summary and recommended_action are model output (name the model and generation date, which are already in the data). Alternatively drop the prose columns from the partner bundle.",
+      "compliance": ["SOC2:CC7.1", "ISO27001:A.5.34", "EU AI Act Art.50"],
+      "fix_priority": "IMMEDIATE"
+    },
+    {
+      "id": "VIGIL-CORR-002",
+      "severity": "HIGH",
+      "pattern": "INTEGRITY_THEATER",
+      "primary_cluster": "EGRESS",
+      "penalty": 10,
+      "narrative": "The README tells the partner to verify files against MANIFEST.sha256 — a manifest that travels inside the very bundle it certifies (anyone who can tamper with the files can regenerate it), covering a build that cannot be reproduced (two same-day builds produced different segments.xlsx and MANIFEST hashes because openpyxl embeds wall-clock timestamps, and README embeds date.today() so any cross-day rebuild differs too). The control produces the appearance of verification while being unable to distinguish a good artifact from a tampered one.",
+      "contributing": [
+        { "id": "VIGIL-EGRESS-008", "severity": "MEDIUM", "what": "Non-reproducible build under a checksum workflow", "where": "build_export.py:86 (to_excel embeds timestamps), build_export.py:51 (date.today() in README)" },
+        { "id": "VIGIL-EGRESS-009", "severity": "MEDIUM", "what": "Self-certifying manifest presented to the recipient as verification", "where": "build_export.py:89-91 writes MANIFEST.sha256 into the bundle; build_export.py:68-70 instructs the recipient to verify against it" }
+      ],
+      "evidence": "Executed: two builds minutes apart — segments.xlsx sha256 2bb23b3d… vs 1ccd8da8…, MANIFEST.sha256 35815f9e… vs 77fe0437…. diff output captured.",
+      "why": "The recipient will treat the bundle as verified when nothing has been verified; tampering is indistinguishable from a rebuild.",
+      "fix": "1) Make the build deterministic: derive the README date from SNAPSHOT (not date.today()) and strip/fix openpyxl document properties (set wb.properties.created/modified to SNAPSHOT). 2) Transmit the manifest out-of-band (email/portal), or sign it — a checksum on the same channel as the artifact defends only against transit corruption, and then say so.",
+      "compliance": ["SOC2:CC7.2", "ISO27001:A.8.16", "NIST SSDF PS.2"],
+      "fix_priority": "HIGH"
+    }
+  ],
+  "findings": {
+    "security": [
+      {
+        "id": "VIGIL-SEC-001",
+        "severity": "MEDIUM",
+        "what": "No dependency manifest or lock file — pandas/openpyxl/pyarrow are imported but never declared or pinned",
+        "where": "build_export.py:16 (import pandas); no requirements.txt, pyproject.toml, or lock file anywhere in target",
+        "why": "The pipeline's behaviour is a function of whatever the ambient interpreter happens to have (currently <ambient-env>). Supply-chain review, CVE attribution and reproducibility are all impossible against an undeclared dependency set — and the EGRESS-001 defect is itself pandas-version-dependent behaviour.",
+        "fix": "Add pyproject.toml declaring pandas/openpyxl/pyarrow with pins (or a uv/pip-tools lock); run the pipeline via that environment.",
+        "refs": "OWASP:A06",
+        "tool_evidence": "bandit -ll: 0 findings; gitleaks dir: 0 leaks; secret-pattern greps: 0 hits; pip-audit on the resolved runtime versions: 0 known CVEs"
+      }
+    ],
+    "code_health": [
+      {
+        "id": "VIGIL-CODE-001",
+        "severity": "HIGH",
+        "what": "No tests of any kind for a pipeline that publishes a documented format contract to an external partner",
+        "where": "no tests/, no test_*.py in target",
+        "why": "This is not theoretical: the shipped bundle currently violates its own documented contract (VIGIL-EGRESS-001), which a single round-trip test — build, read the CSV back, split on the documented separator — would have caught.",
+        "fix": "Add a round-trip test: run main() against the fixture inputs into a tmp dir, assert every multi-value column splits on ' | ', assert the README column table matches the CSV header, assert two builds hash identically.",
+        "refs": null
+      },
+      {
+        "id": "VIGIL-CODE-002",
+        "severity": "LOW",
+        "what": "Dead constant: SOURCE points at customer_registry.json, which the pipeline never reads",
+        "where": "build_export.py:20",
+        "why": "Misleads maintainers (and the project README repeats the claim, see VIGIL-COMP-001) into believing the registry feeds the export; the actual inputs are segments.parquet and enrichment.json.",
+        "fix": "Delete the SOURCE constant or actually use it; align the README.",
+        "refs": null
+      },
+      {
+        "id": "VIGIL-CODE-003",
+        "severity": "INFO",
+        "what": "ruff format would reformat build_export.py (1 file)",
+        "where": "build_export.py",
+        "why": "Cosmetic drift from the formatter's canonical style.",
+        "fix": "ruff format build_export.py",
+        "refs": null,
+        "tool_evidence": "ruff check: All checks passed; ruff format --check: 1 file would be reformatted; mypy --strict: clean, exit 0 (falsifiability of the probe verified)"
+      }
+    ],
+    "performance": [],
+    "compliance": [
+      {
+        "id": "VIGIL-COMP-001",
+        "severity": "LOW",
+        "what": "Project README claims the bundle is built 'from the customer registry'; the pipeline reads segments.parquet + enrichment.json and never touches the registry",
+        "where": "README.md:3 vs build_export.py:80-82",
+        "why": "First document a new maintainer reads states the wrong data lineage — dangerous in a pipeline whose whole job is provenance.",
+        "fix": "Correct the README to name the actual inputs.",
+        "refs": null
+      },
+      {
+        "id": "VIGIL-COMP-002",
+        "severity": "LOW",
+        "what": "No LICENSE file, and the outgoing bundle carries no terms of use for the recipient",
+        "where": "target root; export/README.md",
+        "why": "Cluster table default is MEDIUM for distributable software; adjusted to LOW because this is an internal pipeline — but the artifact it ships does cross an org boundary with no usage terms attached.",
+        "fix": "Add a LICENSE (or internal-use marker) and a terms/usage line to the recipient README.",
+        "refs": null
+      }
+    ],
+    "egress": [
+      {
+        "id": "VIGIL-EGRESS-001",
+        "severity": "HIGH",
+        "what": "Documented multi-value contract is broken: regions ships as a numpy array repr, not the documented ' | ' format",
+        "where": "build_export.py:31 (flatten checks isinstance(v, (list, tuple)) only) — parquet list columns deserialize as numpy.ndarray, so they fall through",
+        "why": "The recipient README says 'Split multi-value columns on ` | `'. The shipped CSV contains ['EMEA' 'APAC'] — ndarray repr, no separator, brackets and quotes included. A recipient following the documented instruction gets silently corrupted region data; tags (from JSON, a real list) works, which makes the defect look like clean output.",
+        "evidence": "Executed: built the bundle; export/segments.csv row 1 contains \"['EMEA' 'APAC']\" in the regions column while tags correctly contains \"retention | premium\".",
+        "fix": "Include np.ndarray in the flatten check (import numpy; isinstance(v, (list, tuple, np.ndarray))), or normalise with df[col] = df[col].map(list) before flatten; add the round-trip test from VIGIL-CODE-001.",
+        "refs": null
+      },
+      {
+        "id": "VIGIL-EGRESS-002",
+        "severity": "HIGH",
+        "what": "Destructive operation before validation: the previous export bundle is deleted before any input is read",
+        "where": "build_export.py:76-78 (shutil.rmtree(OUT)) precedes build_export.py:80-81 (read_parquet / read_json, both of which can raise)",
+        "why": "Any failed run — missing input, schema drift, disk error — destroys the last good bundle and leaves nothing.",
+        "evidence": "Executed: in a temp copy with a built 4-file bundle present, renamed segments.parquet and reran; the run crashed at read_parquet (FileNotFoundError) and export/ was left empty — prior bundle destroyed, nothing rebuilt.",
+        "fix": "Build into a staging dir (export.tmp), write everything including the manifest, then atomically swap (os.replace / rename) and remove the old dir only after success.",
+        "refs": "SOC2:A1.2, ISO27001:A.8.13",
+        "correlation_note": "Matches correlation pattern DESTRUCTIVE_BEFORE_VALIDATE (single-cluster instance; reported here rather than as a CORR since no cross-domain chain is involved). HIGH not CRITICAL: the destroyed target is a derived artifact, rebuildable while inputs exist."
+      },
+      {
+        "id": "VIGIL-EGRESS-003",
+        "severity": "MEDIUM",
+        "what": "Provenance date is asserted, not derived: SNAPSHOT is a hardcoded constant presented to the partner as the data's as-of date",
+        "where": "build_export.py:23 (SNAPSHOT = date(2026, 3, 1)); asserted at build_export.py:51 ('Snapshot: 2026-03-01')",
+        "why": "Nothing ties 2026-03-01 to the data. The enrichment was generated 2026-02-19; a bundle built today asserts 'Snapshot: 2026-03-01 · Built: 2026-08-01' — a five-months-stale snapshot presented under a fresh build date, with no mechanism to catch the drift.",
+        "evidence": "Executed: shipped export/README.md reads 'Snapshot: 2026-03-01 · Built: 2026-08-01'; enrichment.json _generated_at is 2026-02-19.",
+        "fix": "Derive the snapshot from the inputs (e.g. max _generated_at / a vintage column in the parquet) or validate the constant against them and fail the build on mismatch.",
+        "refs": null
+      },
+      {
+        "id": "VIGIL-EGRESS-004",
+        "severity": "MEDIUM",
+        "status": "NEEDS_REVIEW",
+        "what": "PII-shaped customer registry (legal names, contact emails, phones, tax IDs) is committed to the repo and pushed to a GitHub remote — and the pipeline never even reads it",
+        "where": "customer_registry.json (tracked: git ls-files confirms; remote: github.com/abm9111/vigil)",
+        "why": "Egress failure shape 1: sensitive-looking source data rides along with the code while contributing nothing. Held at MEDIUM rather than the committed-to-remote escalation (HIGH) on positive in-data markers of synthetic values: contact emails use the RFC-2606-reserved .example TLD, phones are sequential placeholders (+971500000001/2), tax IDs are sequential. If the owner confirms any values are real, this is HIGH and the file needs history scrubbing, not just deletion.",
+        "evidence": "git ls-files lists customer_registry.json; needle test — all 8 real identifier values (names, emails, phones, tax IDs) searched in the shipped CSV+README: 0 leaked into the bundle.",
+        "fix": "Remove the registry from the repo (it is unused), or rename/mark it unambiguously as fixture data. If values were ever real: purge from git history and rotate.",
+        "refs": "ISO27001:A.5.34"
+      },
+      {
+        "id": "VIGIL-EGRESS-005",
+        "severity": "LOW",
+        "what": "Encoding contract undefended: CSV is BOM-less UTF-8 and the recipient README documents no encoding",
+        "where": "export/segments.csv (first bytes 'seg', no EF BB BF); build_export.py:85",
+        "why": "Excel on Windows reads BOM-less UTF-8 as ANSI. Current data is pure ASCII so nothing corrupts today — the day a segment name is non-ASCII, it will, silently. LOW now; MEDIUM the moment non-ASCII enters.",
+        "fix": "Write with encoding='utf-8-sig' (and state the encoding in the recipient README), or document 'UTF-8, no BOM' explicitly.",
+        "refs": null
+      }
+    ]
+  },
+  "withdrawn": [],
+  "suppressions": [],
+  "scores": {
+    "clusters": {
+      "SEC":    { "score": 96,  "grade": "A+", "weight": 22, "ceiling": 100, "findings": 1 },
+      "CODE":   { "score": 89,  "grade": "B",  "weight": 10, "ceiling": 100, "findings": 3 },
+      "PERF":   { "score": 100, "grade": "A+", "weight": 8,  "ceiling": 100, "findings": 0 },
+      "COMP":   { "score": 98,  "grade": "A+", "weight": 6,  "ceiling": 100, "findings": 2 },
+      "EGRESS": { "score": 51,  "grade": "E",  "weight": 10, "ceiling": 100, "findings": 5, "correlated_penalties_charged_here": ["VIGIL-CORR-001", "VIGIL-CORR-002"] }
+    },
+    "weight_note": "N/A clusters removed; weights normalised over the 56 applicable points.",
+    "overall_raw": 88,
+    "overall": 79,
+    "grade": "C",
+    "cap": "capped from 88 by 5 unresolved HIGH findings (VIGIL-CORR-001, VIGIL-CORR-002, VIGIL-EGRESS-001, VIGIL-EGRESS-002, VIGIL-CODE-001) — severity floor per engines/scoring.md",
+    "verdict": "NOT PRODUCTION READY — 5 HIGH unresolved; the artifact this pipeline ships to a partner currently violates its own documented contract and its integrity story",
+    "baseline": "no .vigil/baseline.json in target — no trend computed"
+  },
+  "recommendations": [
+    "1. Fix flatten() to handle numpy arrays and add the round-trip test (kills VIGIL-EGRESS-001 and most of VIGIL-CODE-001 in one change) — the partner is receiving corrupted region data today.",
+    "2. Build into a staging directory and swap atomically (VIGIL-EGRESS-002) — one bad run currently destroys the only built copy.",
+    "3. Label the model-generated columns in the recipient README and make the build deterministic or move the manifest out-of-band (VIGIL-CORR-001, VIGIL-CORR-002) — the bundle currently launders LLM prose into partner-facing authority under a checksum that verifies nothing."
+  ]
+}

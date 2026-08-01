@@ -1,0 +1,170 @@
+{
+  "vigil": {
+    "mode": "audit",
+    "format": "json",
+    "version": "unversioned",
+    "target": "evals/fixtures/clean-control"
+  },
+  "subject": {
+    "notation": "bc5368c (clean)",
+    "commit": "bc5368c609d97907c32955604dd4c942bf064277",
+    "tree_state": "clean",
+    "tracked_files_in_scope": 1,
+    "uncommitted_changes": 0,
+    "note": "Three gitignored tool-cache dirs (.mypy_cache, __pycache__, .deepeval) exist in the working tree. They are generated artifacts, not repo content; secret and PII scans read them anyway per RULES.md Rule 10a (ignore-agnostic), and the one hit they produced is recorded under withdrawn_findings."
+  },
+  "preflight": {
+    "stack": ["python"],
+    "stack_detail": "Python 3.14, single module, stdlib-only (re, unicodedata, __future__). No dependency manifest, no JS, no Docker, no IaC, no contracts.",
+    "tools_available": {
+      "ruff": {"version": "0.15.10", "path": "<ambient-env>/bin/ruff"},
+      "mypy": {"version": "2.1.0", "path": "<ambient-env>/bin/mypy", "invocation": "python3 -m mypy --strict"},
+      "bandit": {"version": "1.9.4", "path": "<ambient-env>/bin/bandit"},
+      "pip-audit": {"version": "2.9.0", "path": "<ambient-env>/bin/pip-audit"},
+      "semgrep": {"version": "installed", "path": "<ambient-env>/bin/semgrep", "role": "optional"},
+      "gitleaks": {"version": "8.30.1", "path": "/opt/homebrew/bin/gitleaks"},
+      "trufflehog": {"version": "3.95.9", "path": "/opt/homebrew/bin/trufflehog"},
+      "detect-secrets": {"version": "1.5.47", "path": "<ambient-env>/bin/detect-secrets"},
+      "git": {"version": "2.54.0", "path": "/opt/homebrew/bin/git"}
+    },
+    "tools_missing": {
+      "eslint": "optional here - no JS in stack (cluster N/A)",
+      "tsc": "optional here - no TS in stack (cluster N/A)",
+      "slither": "optional here - no contracts in stack (cluster N/A)",
+      "aderyn": "optional here - no contracts in stack (cluster N/A)"
+    },
+    "environment_resolution": {
+      "status": "COMPLETE",
+      "evidence": "preflight.md rule 6 requires tools resolve inside the subject's environment. The module imports only stdlib (re, unicodedata, __future__ - all confirmed in sys.stdlib_module_names), so there is no third-party import surface a misresolved analyzer could silently skip. `python3 -c 'import textnorm'` succeeds under the same interpreter that ran mypy. mypy's clean result is therefore evidence, not the ignore_missing_imports failure mode."
+    }
+  },
+  "coverage": {
+    "SEC": {"ceiling": 100, "required_ran": "2/2 (bandit, pip-audit)", "optional_ran": "semgrep + 3/3 secret scanners", "probe_can_fail": true},
+    "CODE": {"ceiling": 100, "required_ran": "2/2 (ruff, mypy)", "probe_can_fail": true},
+    "PERF": {"ceiling": 100, "required_ran": "no required binary declared in the tool manifest", "probe_can_fail": true, "probe_type": "enumerated-check-suite", "caveat": "preflight.md 'A probe must be able to fail' - this cluster has no discriminating binary. Evidenced here via a 6-check ledger with measurable pass/fail (P5 scaling could have returned SUPERLINEAR and did not). This is option 2 of the two honest choices, but the suite is not versioned into the baseline, so treat this cluster's 100 as an upper bound."},
+    "COMP": {"ceiling": 100, "required_ran": "no required binary declared in the tool manifest", "probe_can_fail": true, "probe_type": "enumerated-check-suite", "caveat": "Same caveat as PERF. Evidenced via a 5-check ledger."}
+  },
+  "scope": {
+    "audited": ["SEC", "CODE", "PERF", "COMP"],
+    "not_applicable": {
+      "API": "no route/handler dirs, no openapi.*, no *.proto, no *.graphql; no fastapi/flask/django/aiohttp/requests/urllib/socket imports (root + 2 levels)",
+      "DATA": "no migrations/, no *.sql, no schema.prisma; no sqlalchemy/psycopg/sqlite3/pymongo/django.db imports (root + 2 levels)",
+      "INFRA": "no Dockerfile, no *.tf, no docker-compose.*, no k8s/, no workflows/ (root + 2 levels)",
+      "FE": "no *.tsx, *.jsx, *.vue, *.svelte, index.html (root + 2 levels)",
+      "AIML": "no *.ipynb; no torch/tensorflow/sklearn/transformers/openai/anthropic imports (root + 2 levels)",
+      "EGRESS": "no export/bundle dirs, no *.csv/*.parquet/*.xlsx, no tarfile/zipfile/make_archive/to_csv/json.dump/open() calls. Module is pure functions with zero I/O primitives, matching its own docstring claim (root + 2 levels)",
+      "CHAIN": "no *.sol, *.vy, foundry.toml, hardhat.config.*, Anchor.toml (root + 2 levels)"
+    },
+    "no_evidence": [],
+    "out_of_scope": ["node_modules", ".git"]
+  },
+  "findings": [],
+  "unscored_observations": [
+    {
+      "id": "VIGIL-CODE-OBS-001",
+      "severity": "INFO",
+      "scored": false,
+      "penalty": 0,
+      "rule": "ruff:EXE001",
+      "what": "Shebang line present on a library module that is not executable and has no __main__ entry point",
+      "where": "textnorm.py:1",
+      "why": "Cosmetic inconsistency only. The file is mode 644 with `#!/usr/bin/env python3` at line 1 and defines no CLI entry point, so the shebang is inert. No security or correctness impact.",
+      "fix": "Either `chmod +x textnorm.py`, or drop line 1. Neither is required.",
+      "why_unscored": "EXE001 is not in the ruleset this project selects. The governing config (pyproject.toml) sets lint.select = [E, F, W, B, SIM, UP, RUF, I] and additionally sets extend-exclude = ['evals/fixtures'], which excludes this path from lint entirely. EXE001 surfaced only because this audit ran an expanded `--select ALL` sweep. Scoring it would impose a ruleset the project explicitly declined (RULES.md Rule 5, scope discipline). Disclosed rather than dropped, per Rule 8."
+    }
+  ],
+  "withdrawn_findings": [
+    {
+      "rule": "ruff:RUF001",
+      "where": "textnorm.py:33:42",
+      "raw_hit": "String contains ambiguous 'ا' (ARABIC LETTER ALEF). Did you mean 'l' (LATIN SMALL LETTER L)?",
+      "disposition": "WITHDRAWN - false positive",
+      "basis": "RULES.md Rule 1a Q2 - intent is declared in a way the scanner cannot see, and the declaration is a fact about the code rather than a claim about a control. The flagged string is the canonical target of a hamza-folding map inside a function named `normalize_arabic`, in a module whose docstring is 'Unicode text normalisation for search indexing'. RUF001 exists to catch homoglyph substitution in text intended as Latin; here Arabic script is the subject matter. The suggested remediation - replacing U+0627 ARABIC LETTER ALEF with 'l' - would invert the function's purpose, so it fails Rule 1a Q3 as well.",
+      "verified_by": "Enumerated every codepoint the sibling _ARABIC_MARKS class matches (23 total, U+064B-U+065F plus U+0670 and U+0640) and confirmed all are combining marks except the tatweel, which the line comment names deliberately."
+    },
+    {
+      "rule": "ruff:RUF001",
+      "where": "textnorm.py:35:40",
+      "raw_hit": "String contains ambiguous 'ه' (ARABIC LETTER HEH). Did you mean 'o' (LATIN SMALL LETTER O)?",
+      "disposition": "WITHDRAWN - false positive",
+      "basis": "Identical to the line 33 hit. U+0647 ARABIC LETTER HEH is the canonical output of the teh-marbuta fold. Substituting 'o' would corrupt every Arabic token the indexer produces."
+    },
+    {
+      "rule": "detect-secrets:HexHighEntropyString",
+      "where": ".mypy_cache/CACHEDIR.TAG:1",
+      "raw_hit": "Hex High Entropy String, hashed_secret e8f8c345877b2411a59897798e422b15b0c16d76",
+      "disposition": "WITHDRAWN - false positive",
+      "basis": "RULES.md Rule 1a - opened the flagged location. The file contains the literal line 'Signature: 8a477f597d28d172789f06886806bc55', which is the universal magic constant mandated by the Cache Directory Tagging Specification (https://bford.info/cachedir/) and is byte-identical in every CACHEDIR.TAG on every machine. It is a format marker, not a credential: it authenticates nothing, grants nothing, and is published in the spec. The file is additionally untracked and gitignored (.gitignore:3 '.mypy_cache/'), and `git ls-files --error-unmatch` confirms it has never been committed, so it is not repo content and cannot leak.",
+      "note": "Surfaced only because Rule 10a mandates ignore-agnostic secret scanning. That rule is working as intended - it read a path git hides - and the hit was then correctly resolved by reading the file."
+    }
+  ],
+  "correlations": [],
+  "correlation_note": "Correlation engine ran with an empty finding set across 4 audited clusters. All 10 patterns require >=2 constituent findings; none matched. No VIGIL-CORR-* emitted.",
+  "suppressions": [],
+  "scoring": {
+    "penalty_total": 0,
+    "clusters": {
+      "SEC":  {"score": 100, "grade": "A+", "ceiling": 100, "base_weight": 22, "adjusted_weight": 47.83, "findings": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}},
+      "CODE": {"score": 100, "grade": "A+", "ceiling": 100, "base_weight": 10, "adjusted_weight": 21.74, "findings": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 1}},
+      "PERF": {"score": 100, "grade": "A+", "ceiling": 100, "base_weight": 8,  "adjusted_weight": 17.39, "findings": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}},
+      "COMP": {"score": 100, "grade": "A+", "ceiling": 100, "base_weight": 6,  "adjusted_weight": 13.04, "findings": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}}
+    },
+    "applicable_weight_sum": 46,
+    "overall": 100,
+    "grade": "A+",
+    "severity_cap_applied": null,
+    "cap_reason": "none",
+    "max_unresolved_severity": "INFO",
+    "verdict": "PASS",
+    "verdict_qualifier": "Both pass conditions met: overall >= 80 after severity floors, and every applicable cluster at ceiling 100 with no cluster N/E. Qualified by the PERF/COMP probe caveat below.",
+    "interpretation": "Exemplary. Maintain current practices.",
+    "upper_bound_caveat": "PERF (8) and COMP (6) together carry 14 of the 46 applicable weight points - 30.4% of the weighted average - and neither declares a required binary in the preflight tool manifest. Their scores rest on enumerated check ledgers rather than a third-party analyzer. Per preflight.md, treat the headline 100 as an upper bound on those two clusters. SEC and CODE, which carry the remaining 69.6%, are fully tool-evidenced."
+  },
+  "evidence_ledger": {
+    "SEC": {
+      "bandit": {"result": "0 results", "loc_scanned": 41, "nosec_comments": 0, "skipped_tests": 0},
+      "pip-audit": {"result": "no dependency surface", "detail": "AST import extraction found only re, unicodedata, __future__ - all confirmed stdlib. No requirements.txt/pyproject.toml/setup.py/Pipfile/poetry.lock in scope. Third-party CVE exposure is vacuously zero, not unmeasured."},
+      "semgrep": {"result": "0 results, 0 errors", "config": "auto", "files_scanned": 1},
+      "gitleaks_worktree": {"result": "no leaks found", "bytes_scanned": 6294},
+      "gitleaks_history": {"result": "no leaks found", "commits_scanned": 1, "scope": "-- evals/fixtures/clean-control"},
+      "trufflehog": {"result": "0 findings (verified and unverified)"},
+      "detect-secrets": {"result": "1 hit, withdrawn - see withdrawn_findings", "scope": "--all-files (ignore-agnostic per Rule 10a)"},
+      "three_tree_check": {"working_tree": 0, "tracked_tree": 0, "history": 0, "note": "Rule 10a - all three trees agree at zero, so the subject notation carries no ambiguity here."}
+    },
+    "CODE": {
+      "ruff_project_ruleset": {"result": "2 hits, both RUF001, both withdrawn"},
+      "ruff_select_all": {"result": "5 hits", "detail": "2x RUF001 (withdrawn), 1x EXE001 (unscored observation), 1x TRY003 + 1x EM102 (exception-message style, not in the project's selected ruleset - not reported as findings per Rule 5 scope discipline and anti-pattern 4)"},
+      "mypy_strict": {"result": "Success: no issues found in 1 source file", "flags": "--strict --no-incremental", "exit": 0}
+    },
+    "PERF": {
+      "P1_regex_precompiled": "PASS - 2 module-level compiles, 0 inline re.* calls inside functions",
+      "P2_no_unbounded_cache": "PASS - no lru_cache, no module-level mutable state",
+      "P3_pipeline_passes": "~10 passes per normalize() call (NFKC, casefold, NFD, Mn filter, NFC, marks sub, 5x replace, whitespace sub)",
+      "P4_throughput_short": "266,276 calls/sec (3.8 us) on a 31-char Arabic query",
+      "P4b_throughput_document": "1.10 ms on a 12k-char document",
+      "P5_scaling": "PASS - LINEAR. Doubling ratios [2.03, 2.04, 1.96] across 1k/2k/4k/8k inputs. This check could have failed and did not.",
+      "P6_hot_spot": "normalize_arabic is 14% of pipeline cost. The 5-iteration str.replace loop is not a bottleneck at this scale; str.translate would be idiomatic but the measured gain does not justify a finding (RULES.md Rule 8 - do not manufacture issues)."
+    },
+    "COMP": {
+      "C1_module_docstring": "PASS",
+      "C2_function_docstrings": "PASS - 4/4 public functions documented",
+      "C3_type_annotations": "PASS - all params and returns annotated, `from __future__ import annotations` present",
+      "C4_docstring_accuracy": "PASS - docstring claims 'no I/O, no network, no filesystem access'; grep for open(/socket/requests/urllib/subprocess/Path( returns zero matches. The claim is true.",
+      "C5_license_readme": "Not in fixture scope. Parent repo carries LICENSE and README.md."
+    }
+  },
+  "hypotheses_tested_and_refuted": [
+    {
+      "hypothesis": "The _ARABIC_MARKS character class at textnorm.py:15 spans U+064B to U+0670, which would swallow U+0660-U+0669 (ARABIC-INDIC DIGITS) and silently delete Arabic numerals from indexed text - a data-loss bug in a search normalizer.",
+      "method": "Enumerated every codepoint in U+0600-U+06FF that the compiled pattern matches, checked each against unicodedata.category, then ran the full pipeline over Arabic-Indic digit inputs.",
+      "result": "REFUTED. The class is [U+064B-U+065F] plus literals U+0670 and U+0640 - 23 codepoints, of which the only non-Mn member is U+0640 TATWEEL, which the adjacent comment names deliberately. normalize('qanun 2024' in Arabic script) preserves the digits intact. No digits are in range.",
+      "reported": false,
+      "note": "Recorded because an untested version of this hypothesis would have been a plausible-sounding HIGH. Rule 1 required running it before reporting it, and running it killed it."
+    }
+  ],
+  "recommendations": [
+    "No remediation required. Zero findings at LOW or above across all four audited clusters.",
+    "Optional, cosmetic: resolve the inert shebang at textnorm.py:1 (chmod +x, or delete the line). Not scored, and outside the project's selected lint ruleset.",
+    "If this module later gains third-party dependencies, an I/O path, or an export surface, re-run - the EGRESS, DATA and API N/A determinations are the ones most likely to flip."
+  ]
+}
