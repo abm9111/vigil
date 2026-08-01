@@ -893,6 +893,10 @@ def check_stated_check_count(r: Report) -> None:
     # reasoning was never carried to the two files a contributor actually invokes. A stale
     # count on `make audit` is the claim read most often and verified least.
     scanned += [p for p in (ROOT / "Makefile", ROOT / ".pre-commit-config.yaml") if p.exists()]
+    # scripts/ too. `adversarial-review.sh` opens by citing the check count as evidence for why
+    # an outside review is worth running, which is exactly the kind of claim that goes stale
+    # and exactly the kind of file this check could not see until now.
+    scanned += sorted((ROOT / "scripts").glob("*.sh"))
     for f in scanned:
         rel = f.relative_to(ROOT)
         for m in stated.finditer(f.read_text(encoding="utf-8")):

@@ -8,7 +8,7 @@
 # and are never invoked by `check`.
 
 .DEFAULT_GOAL := check
-.PHONY: check audit loadable ledger privacy test types lint eval baseline learn clean help
+.PHONY: check audit loadable ledger privacy test types lint eval baseline review learn clean help
 
 ## check: everything CI runs. Green here means green there.
 check: audit loadable ledger privacy test types lint
@@ -79,6 +79,14 @@ baseline:
 	@echo '  scripts/run-baseline.sh <outdir> 5'
 	@echo ''
 	@echo '--runs 5 is a FLOOR: the same arm has returned 0% and 83% on consecutive draws.'
+
+## review: hand a clean clone to an outside model — the highest-yield check here
+#
+# Not part of `check`: it costs money and needs an engine CLI. Three rounds have found twelve
+# defects that every check in this repo found none of.
+review:
+	@echo 'scripts/adversarial-review.sh --engine codex|grok|kimi'
+	@echo 'Brief: evals/review-brief.md — edit it to sharpen a round, never to narrow one.'
 
 ## learn: aggregate local run records into learning signals
 learn:

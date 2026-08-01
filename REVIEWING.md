@@ -58,6 +58,21 @@ Reporting these is not useful; they are stated in `docs/OPEN-DESIGN.md` on purpo
 - **Prose checks have a convention, not a fix.** Nine instances of the same silent-green
   failure so far. See "Mutating a prose check" in [`AGENTS.md`](AGENTS.md).
 
+## Running a round yourself
+
+```bash
+scripts/adversarial-review.sh --engine codex     # codex | grok | kimi
+```
+
+Hands a clean clone to an outside model with the brief in
+[`evals/review-brief.md`](evals/review-brief.md), read-only, and writes the verdict. It
+refuses to report a clean review it cannot justify: a broken run, an unavailable model or a
+suspiciously short verdict exits 2 rather than producing an empty report that reads like good
+news. That guard exists because the first run of it did exactly that.
+
+**Rotate the engine rather than re-running one.** Overlap between families has been near zero;
+overlap between two runs of the same family is unmeasured and probably high.
+
 ## Where the risk actually is, ranked
 
 1. **`install.sh`** — served as `curl … | bash`, runs on strangers' machines. Two defects found
