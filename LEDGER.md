@@ -7,7 +7,7 @@ Where VIGIL's improvements actually came from. Every row is backed by a committe
 lesson in [`lessons/`](lessons/README.md) recording something VIGIL, or its own
 self-audit, got **wrong**.
 
-**11 of 13 classes mechanized** · 13 lessons · 1 open · 1 judged unmechanizable
+**12 of 14 classes mechanized** · 14 lessons · 1 open · 1 judged unmechanizable
 
 ## Contributors
 
@@ -16,10 +16,11 @@ one shape is one class — the metric is deliberately hard to inflate.
 
 | Contributor | Classes | Lessons | Mechanized |
 |---|---|---|---|
-| Author / implementer | **7** | 7 | 7 |
+| Author / implementer | **8** | 8 | 8 |
 | ci | **3** | 3 | 3 |
 | Grok (cross-model review) | **2** | 2 | 1 |
 | Kimi (cross-model review) | **2** | 2 | 1 |
+| gpt-5.5 | **1** | 1 | 1 |
 | The audited model itself | **1** | 1 | 1 |
 
 ## What caught what
@@ -29,12 +30,12 @@ human reading carefully and one found by an automated check are very different s
 
 | Missed it | Times |
 |---|---|
+| check_repo.py (automated) | 9 |
 | Author / implementer | 9 |
-| check_repo.py (automated) | 8 |
-| Grok (cross-model review) | 3 |
+| Grok (cross-model review) | 4 |
+| Kimi (cross-model review) | 3 |
+| ci | 3 |
 | RULES.md Rule 3 | 2 |
-| Kimi (cross-model review) | 2 |
-| ci | 2 |
 | Harness design review | 1 |
 | preflight | 1 |
 | RULES.md Rule 1 | 1 |
@@ -44,12 +45,14 @@ human reading carefully and one found by an automated check are very different s
 | L34 | 1 |
 | review | 1 |
 | L19 | 1 |
+| test_prose_clauses | 1 |
 
 ## Classes
 
 | Class | Status | Lesson |
 |---|---|---|
 | a benchmark the model can read is not a benchmark | ✅ `L12 (answer-key location), run_eval.py hard refusal` | [A fixture scored 0 false positives while the answer key sat inside the audited directory](lessons/0002-contaminated-measurement.md) |
+| a check that a rule is *stated* was satisfied by the rule being *quoted* | ✅ `L28, L30, L31, L32, L33, L36` | [Every rule in this repository could be reversed without deleting a word of it](lessons/0014-a-rule-can-be-reversed-without-deleting-a-word-of-it.md) |
 | a checker only checks what someone thought to check | ✅ `L7, L8` | [The self-audit reported CLEAN while five real inconsistencies sat in the repo](lessons/0001-checker-clean-over-real-gaps.md) |
 | a control removed produces silence, and silence is indistinguishable from nothing to report | ✅ `L35` | [Narrowing the CI trigger to stop redundant tag runs stopped every branch run instead](lessons/0012-tidying-the-trigger-turned-the-gate-off.md) |
 | a control's presence is not its efficacy — reading is not running | ✅ `L31` | [A rate limiter was credited as a compensating control; it had never blocked a single request](lessons/0008-control-present-not-effective.md) |

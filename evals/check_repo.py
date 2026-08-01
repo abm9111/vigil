@@ -47,6 +47,7 @@ Checks:
   L33 Rule 10a requires every report to name the tree it audited
   L34 the Makefile gate and the CI workflow run the same commands in the same environment
   L35 the workflow's push trigger cannot be narrowed to nothing
+  L36 FLAGS.md and scoring.md agree on what suppressing a finding does
 
 Exit: 0 clean · 1 findings · 2 harness error.
 """
@@ -97,6 +98,66 @@ class Report:
 
 def md_files() -> list[Path]:
     return sorted(p for p in ROOT.rglob("*.md") if ".git" not in p.parts)
+
+
+# ─────────────────────────────────────────────────────────── prose clauses, checked properly
+#
+# A clause check asserts that a document still *states* a rule. The obvious implementation —
+# `re.search(fragment, text)` — is defeated by leaving the fragment intact and negating around
+# it, and both attacks are things a person does by accident:
+#
+#   "**A mitigation may reduce a finding's severity only on demonstrated efficacy.**"
+#     → "...and this is deliberately not restricted to only on demonstrated efficacy"   (insert)
+#     → "Earlier versions said the default is no; that is no longer the behaviour."     (quote)
+#
+# Both kept every regex green. The second flipped consent to opt-out. So a clause now stores
+# the WHOLE sentence and must find it (a) verbatim, (b) beginning a line or list/table cell,
+# and (c) with no negating language in the preceding context.
+#
+# This raises the bar; it does not prove meaning. A regex cannot. What it buys is that
+# ordinary documentation drift — the kind that produced every instance found so far — now
+# fails loudly, and subverting a rule requires deleting the sentence that states it.
+NEGATORS = re.compile(
+    r"no longer|not restricted|earlier version|previously (?:said|stated|specified)|"
+    r"used to (?:say|be|state)|is now|are now|deprecated|superseded|does not apply|"
+    r"deliberately not|that is false|no longer the|was removed|has been relaxed|"
+    r"except that|unless the|obsolete",
+    re.I,
+)
+# What may sit between the start of a line and the clause: indentation, blockquote markers,
+# list bullets, table pipes, heading hashes, ordered-list numbers — or a complete preceding
+# sentence. Requiring column zero was too strict: several rules are the second sentence of a
+# paragraph, and padding every clause out to the line start would make the table a transcript.
+# What matters is that the clause *begins* a sentence, so no words can lead into it.
+# Dashes by escape, not literal: ruff RUF001 flags an en dash inside a string as ambiguous,
+# and it is right to — a hyphen and an en dash look identical in a character class.
+CLAUSE_PREFIX = re.compile(
+    "(?:[\\s>*#|\\-\u2013\u20140-9.)]*|.*[.!?:\u2014]\\s+)\\Z", re.S)
+
+
+def clause_holds(text: str, sentence: str) -> bool:
+    """True if `sentence` is stated, not merely present as a substring somewhere."""
+    pattern = re.compile(r"\s+".join(re.escape(w) for w in sentence.split()), re.I)
+    for m in pattern.finditer(text):
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        if not CLAUSE_PREFIX.match(text[line_start:m.start()]):
+            continue  # something on this line leads into it — could be quoting or negating it
+        if NEGATORS.search(text[max(0, line_start - 260):line_start]):
+            continue  # the surrounding prose walks it back
+        return True
+    return False
+
+
+def check_clauses(r: Report, check_id: str, path: Path,
+                  clauses: list[tuple[str, str]], why: str) -> None:
+    if not path.exists():
+        r.fail(check_id, f"{path.name} is missing")
+        return
+    text = path.read_text(encoding="utf-8")
+    for guarantee, sentence in clauses:
+        if not clause_holds(text, sentence):
+            r.fail(check_id, f"{path.relative_to(ROOT)} no longer states that {guarantee} — "
+                             f"{why}")
 
 
 def check_links(r: Report) -> None:
@@ -791,8 +852,10 @@ def check_stated_check_count(r: Report) -> None:
     code. That is precisely the drift L13 and L20 already mechanize for weights and versions —
     the number that says how much verification exists is a strange one to leave unverified.
 
-    `lessons/`, `proof/` and `CHANGELOG.md` are exempt: "at the time there were six checks" is
-    a historical statement, and correcting it would falsify the record it exists to keep.
+    `lessons/`, `proof/`, `evals/results/` and `CHANGELOG.md` are exempt: "at the time there
+    were six checks" is a historical statement, and correcting it would falsify the record it
+    exists to keep. `evals/results/` was added when a review write-up was flagged for saying
+    what the suite counted on the day it ran — which is the only thing a result may say.
 
     CI workflows are in scope. The count first drifted in a step *name* — prose in YAML is
     still prose, and scanning only markdown would have left the same claim wrong in the one
@@ -821,9 +884,15 @@ def check_stated_check_count(r: Report) -> None:
     stated = re.compile(r"\b(\d+)[ -](?:structural[ -])?(?:self-)?checks\b")
     scanned = [f for f in md_files()
                if f.relative_to(ROOT).parts[0] not in ("lessons", "proof")
+               and f.parent != ROOT / "evals" / "results"
                and f.name != "CHANGELOG.md"]
     scanned += sorted((ROOT / ".github").rglob("*.yml"))
     scanned += sorted((ROOT / ".github").rglob("*.yaml"))
+    # The gate surfaces themselves. Both said 33 while 35 ran, and neither was scanned —
+    # the count first drifted in a CI step *name*, which is why YAML was added, and the same
+    # reasoning was never carried to the two files a contributor actually invokes. A stale
+    # count on `make audit` is the claim read most often and verified least.
+    scanned += [p for p in (ROOT / "Makefile", ROOT / ".pre-commit-config.yaml") if p.exists()]
     for f in scanned:
         rel = f.relative_to(ROOT)
         for m in stated.finditer(f.read_text(encoding="utf-8")):
@@ -864,6 +933,14 @@ def check_record_schema_closed(r: Report) -> None:
         ):
             r.fail("L25", f"{where} is an unconstrained string — this is a free-text field, "
                           "and a free-text field can hold the user's work")
+        # An array with no `items` is a free-text field wearing brackets. The validator only
+        # descends into a list when `items` exists, so `{"type": "array"}` accepts
+        # `["auth bypass in the internal refund workflow"]` with zero errors and no leak hits —
+        # verified. Every closed-schema guarantee in CONTRIBUTING.md and SECURITY.md rests on
+        # "a path or description has no field to occupy", and this is a field to occupy.
+        if node.get("type") == "array" and "items" not in node:
+            r.fail("L25", f"{where} is an array without `items` — its elements are "
+                          "unvalidated, which makes it a free-text field in disguise")
         for key, child in node.get("properties", {}).items():
             walk(child, f"{where}.{key}")
         for key, child in node.get("definitions", {}).items():
@@ -956,26 +1033,33 @@ def check_corpus_bundles(r: Report) -> None:
 # Prose, because the prompt is executed by a model reading this file — there is no function to
 # unit-test. That is a real limit and worth stating plainly: this check proves the instruction
 # is present and unambiguous, not that a given run obeyed it.
+# Whole sentences, not fragments — see `clause_holds`. The fragment form of this table was
+# defeated by keeping every fragment and rewriting around it:
+#
+#   "**The default is yes.** Earlier versions specified that the default is no, and enter
+#    must select it; that is no longer the behaviour."
+#
+# Eight clauses, all green, consent flipped to opt-out. Two earlier instances are recorded
+# above this line in the file's history: a bare `default —` that survived the flip, and an
+# alternation that let one of two statements be inverted while the other held the check up.
 CONSENT_CLAUSES: list[tuple[str, str]] = [
-    # Each alternative must be false when the guarantee is gone. An earlier version of this
-    # clause accepted a bare "default —", which still matched after the default was flipped to
-    # `[y] yes (default — nothing leaves this machine)`. The check passed while the guarantee
-    # was inverted, and its own mutation test passed for an unrelated reason. A loose
-    # alternative in a prose check is the same defect as a porous evidence gate (lessons/0005).
-    # Split, not alternated. These are TWO places the same guarantee is stated, and an
-    # alternation let one be inverted while the other kept the check green — instance four of
-    # the loose-alternative defect, found by tests/test_prose_clauses.py. Requiring both also
-    # catches the doc contradicting itself.
-    ("the prose states that sharing defaults to no", r"default is no\b"),
-    ("the option list marks [n] as the default", r"\[n\][^\n]*\bdefault"),
-    ("silence is not consent", r"enter must select it"),
-    ("non-interactive is not consent", r"non-interactive means no\b"),
-    ("a decline is honoured", r"is not asked\s*\n?again"),
-    ("the user can see the exact record", r"prints the record in full"),
-    ("VIGIL does not transmit", r"does not transmit"),
-    # `telemetry:\s*off` matched a second, incidental mention elsewhere in the file, so the
-    # clause survived the disabling sentence being removed. Key on what the rule *does*.
-    ("there is an off switch that disables record writing", r"disables record writing"),
+    ("sharing defaults to no and silence selects it",
+     "**The default is no, and enter must select it.** If the user says nothing, "
+     "nothing is shared."),
+    ("the option list marks [n] as the default",
+     "[n] no (default — nothing leaves this machine)"),
+    ("non-interactive is not consent",
+     "**non-interactive means no**, because there was nobody there to ask"),
+    ("a decline is honoured",
+     "A decline is recorded in `.vigil/telemetry.json` as `\"share\": \"never\"` and "
+     "**is not asked again** in that repo."),
+    ("the user can see the exact record",
+     "**`[s]` prints the record in full**, not a summary and not a description of the "
+     "categories."),
+    ("VIGIL does not transmit",
+     "**`[y]` does not transmit anything.**"),
+    ("there is an off switch that disables record writing",
+     "`.vigil/telemetry: off` disables record writing entirely, including the disclosure."),
 ]
 
 
@@ -991,16 +1075,9 @@ def check_consent_contract(r: Report) -> None:
     participation is low, treat `--ci` as consent because nobody is watching anyway. None of
     those look like removing consent in a diff. This asserts each clause is still there.
     """
-    path = ROOT / "engines" / "telemetry.md"
-    if not path.exists():
-        r.fail("L28", "engines/telemetry.md is missing — the consent contract lives there")
-        return
-    text = path.read_text(encoding="utf-8")
-    for guarantee, pattern in CONSENT_CLAUSES:
-        if not re.search(pattern, text, re.I):
-            r.fail("L28", f"telemetry.md no longer states that {guarantee} — if this was "
-                          "deliberate, the design changed and that is a conversation, "
-                          "not a commit")
+    check_clauses(r, "L28", ROOT / "engines" / "telemetry.md", CONSENT_CLAUSES,
+                  "if this was deliberate, the design changed and that is a conversation, "
+                  "not a commit")
 
     # SKILL.md is what a model actually routes through, so the ask has to be visible there too.
     # A contract documented only in the engine is a contract the router can skip.
@@ -1053,22 +1130,19 @@ def check_schema_prefixes(r: Report) -> None:
 # Prose again, for the same reason as L28 — the probe is executed by a model reading this file.
 # The check proves the requirement is stated and unambiguous, not that a given run obeyed it.
 RESOLUTION_CLAUSES: list[tuple[str, str]] = [
-    # The old second alternative matched "outside the subject's environment" — the
-    # FORBIDDEN state — so "a tool may resolve outside …" kept the check green. An
-    # alternative that matches the violation is worse than no clause at all.
     ("a tool must resolve inside the subject's environment",
-     r"must resolve inside the subject"),
+     "## A tool must resolve inside the subject's environment"),
     ("the resolved path is recorded, not just the version",
-     r"absolute path of every tool"),
+     "**Resolve, then compare.** Record the absolute path of every tool and whether it lies "
+     "inside the subject's environment:"),
     ("a misresolved tool cannot reach ceiling 100",
-     r"cannot contribute to a ceiling of 100"),
-    # `[\s>]*` because the clause sits in a blockquote and wraps: `**not\n> evidence**`.
-    # The first version of this pattern assumed a plain line break and failed on its own
-    # prose — a check whose regex is more fragile than the rule it guards.
+     "**A tool resolved outside the subject's environment cannot contribute to a ceiling "
+     "of 100.**"),
     ("an analyzer that cannot import the subject's dependencies is not evidence",
-     r"clean result is \*\*not[\s>]*evidence\*\*"),
+     "If the analyzer cannot import the subject's dependencies, its clean result is "
+     "**not > evidence**."),
     ("the project-local invocation is preferred",
-     r"project-local invocation"),
+     "**Prefer the project-local invocation and record which you used:**"),
 ]
 
 
@@ -1085,35 +1159,25 @@ def check_tool_resolution(r: Report) -> None:
     So this class deserves a check even though the enforcement is instructional, and the
     honest limit is the same as L28's: presence of the rule, not obedience to it.
     """
-    path = ROOT / "engines" / "preflight.md"
-    if not path.exists():
-        r.fail("L30", "engines/preflight.md is missing")
-        return
-    text = path.read_text(encoding="utf-8")
-    for guarantee, pattern in RESOLUTION_CLAUSES:
-        if not re.search(pattern, text, re.I):
-            r.fail("L30", f"preflight.md no longer requires that {guarantee} — "
-                          "lessons/0007 is the reason this is enforced")
+    check_clauses(r, "L30", ROOT / "engines" / "preflight.md", RESOLUTION_CLAUSES,
+                  "a tool that resolves outside the subject measures a different codebase")
 
 
 EFFICACY_CLAUSES: list[tuple[str, str]] = [
     ("presence alone does not reduce severity",
-     r"only on demonstrated efficacy"),
+     "**A mitigation may reduce a finding\'s severity only on demonstrated efficacy.**"),
     ("there is an evidence ladder for controls",
-     r"\| \*\*Executed\*\*"),
-    # `\*\*no\*\*` was an alternative here and it matched any bolded "no" in the file, so the
-    # clause stayed green after "not sufficient" was inverted to "sufficient". Third instance
-    # of the same defect (L28's `default —`, L30's blockquote wrap): a loose alternative in a
-    # prose check fails silently toward green. Keep every alternative keyed to text that
-    # changes when the rule's meaning changes.
+     "| **Executed** | the control was exercised and observed to block the input class | yes |"),
     ("a merely-present control is explicitly insufficient",
-     r"necessary and \*\*not sufficient\*\*"),
+     "That is necessary and **not sufficient**"),
     ("the ladder denies severity reduction to a merely-present control",
-     r"\*\*Present\*\*[^\n]*\*\*no\*\*"),
+     "| **Present** | it exists in the code and looks correct | **no** |"),
     ("the initial-state trap is named",
-     r"first[- ]call"),
+     "| **Traced** | the path was followed end to end **including its empty, first-call and "
+     "error branches** | yes, one step only |"),
     ("undemonstrated efficacy keeps the undiminished severity",
-     r"keeps its undiminished\s*\n?severity"),
+     "**The fence.** Where efficacy cannot be demonstrated, the finding keeps its "
+     "undiminished severity and is marked `NEEDS_REVIEW`."),
 ]
 
 
@@ -1130,16 +1194,8 @@ def check_control_efficacy(r: Report) -> None:
     why it needs a check: a future edit tidying Rule 3 back toward "check if mitigations exist"
     would reopen it and read as a simplification.
     """
-    rules = ROOT / "RULES.md"
-    if not rules.exists():
-        r.fail("L31", "RULES.md is missing")
-        return
-    text = rules.read_text(encoding="utf-8")
-    for guarantee, pattern in EFFICACY_CLAUSES:
-        if not re.search(pattern, text, re.I):
-            r.fail("L31", f"RULES.md no longer states that {guarantee} — Rule 3a exists "
-                          "because Rule 3 as written was satisfied by a control that never "
-                          "worked (lessons/0008)")
+    check_clauses(r, "L31", ROOT / "RULES.md", EFFICACY_CLAUSES,
+                  "Rule 3a exists because Rule 3 as written was satisfied by a control that never worked (lessons/0008)")
 
 
 # Every alternative below is keyed to text that changes when the rule's meaning changes —
@@ -1147,21 +1203,21 @@ def check_control_efficacy(r: Report) -> None:
 # silently toward green before that convention was written down.
 POINTER_CLAUSES: list[tuple[str, str]] = [
     ("a scanner hit is a pointer, not an answer",
-     r"pointer to a question, not an answer"),
+     "### Rule 1a: A scanner hit is a pointer to a question, not an answer to it"),
     ("tool output is a starting point, not a sufficient ending point",
-     r"required \*\*starting\*\* point, never\s*\n?because it is a sufficient"),
+     "Tool output is first in that hierarchy because it is the required **starting** point, "
+     "never because it is a sufficient **ending** point."),
     ("the flagged location must be read before reporting",
-     r"read the flagged location"),
-    ("scanners do not read comments",
-     r"Scanners do not read comments"),
+     "**Before a hit becomes a finding, read the flagged location**"),
+    ("scanners do not read comments", "Scanners do not read comments."),
     ("a destructive remediation is not a fix",
-     r"is not a fix, and a finding whose only remedy is destructive"),
-    # Added on review: Rule 1a authorises WITHDRAWAL, a stronger act than Rule 3a's
-    # reduction, and originally had a weaker gate. These two clauses fence it.
+     "A remediation that would orphan stored data, break a persisted identifier or change a "
+     "wire format is not a fix, and a finding whose only remedy is destructive is not yet "
+     "complete."),
     ("withdrawing a hit is harder than reducing one",
-     r"Withdrawing a hit is harder than reducing one"),
+     "**Withdrawing a hit is harder than reducing one, not easier.**"),
     ("a withdrawn hit is still reported",
-     r"A withdrawn hit is reported as withdrawn"),
+     "**A withdrawn hit is reported as withdrawn**"),
 ]
 
 
@@ -1179,29 +1235,23 @@ def check_hit_is_a_pointer(r: Report) -> None:
     tool output *first*, which reads as strongest-and-sufficient. 1a is the fence that keeps
     first from meaning final.
     """
-    rules = ROOT / "RULES.md"
-    if not rules.exists():
-        r.fail("L32", "RULES.md is missing")
-        return
-    text = rules.read_text(encoding="utf-8")
-    for guarantee, pattern in POINTER_CLAUSES:
-        if not re.search(pattern, text, re.I):
-            r.fail("L32", f"RULES.md no longer states that {guarantee} — Rule 1a exists "
-                          "because two findings were reported without opening the file the "
-                          "scanner pointed at (lessons/0009)")
+    check_clauses(r, "L32", ROOT / "RULES.md", POINTER_CLAUSES,
+                  "Rule 1a exists because a scanner hit was reported as a finding without the flagged location being read")
 
 
 SUBJECT_CLAUSES: list[tuple[str, str]] = [
     ("a bare commit SHA is permitted only when the tree is clean",
-     r"only when the tree is\s*\n?clean\*\*"),
+     "**Every report names its subject**, and a bare commit SHA is permitted **only when "
+     "the tree is clean**:"),
     ("the subject vocabulary distinguishes tree kinds",
-     r"tracked only"),
+     "| `abc1234 (tracked only)` | tracked files at that commit, i.e. what CI receives |"),
     ("a CI gate and a local run are different subjects",
-     r"different subjects"),
+     "**A CI gate and a local run are different subjects.**"),
     ("baseline deltas must compare like with like",
-     r"refuse the delta when the kinds differ"),
+     "Record the subject in `.vigil/baseline.json` beside the tool versions, and refuse the "
+     "delta when the kinds differ."),
     ("secret scans must read ignored paths",
-     r"Secret and PII scans read ignored paths too"),
+     "Secret and PII scans read ignored paths too, or they measure the wrong tree."),
 ]
 
 
@@ -1216,16 +1266,8 @@ def check_subject_named(r: Report) -> None:
     Also enforces that the mode templates stopped hard-coding a bare SHA, because a rule that
     the output format contradicts is a rule nobody can follow.
     """
-    rules = ROOT / "RULES.md"
-    if not rules.exists():
-        r.fail("L33", "RULES.md is missing")
-        return
-    text = rules.read_text(encoding="utf-8")
-    for guarantee, pattern in SUBJECT_CLAUSES:
-        if not re.search(pattern, text, re.I):
-            r.fail("L33", f"RULES.md no longer states that {guarantee} — Rule 10a exists "
-                          "because a report named a commit it was not auditing "
-                          "(lessons/0010)")
+    check_clauses(r, "L33", ROOT / "RULES.md", SUBJECT_CLAUSES,
+                  "Rule 10a exists because a report named a commit it was not auditing (lessons/0010)")
 
     for name in ("audit", "scan", "score"):
         mode = ROOT / "modes" / f"{name}.md"
@@ -1358,6 +1400,60 @@ def check_push_trigger(r: Report) -> None:
                       "run rather than a red one (lessons/0012)")
 
 
+SUPPRESSION_CLAUSES: list[tuple[str, str]] = [
+    ("a suppressed finding is still reported at its mechanical severity",
+     "**Behavior:** A matching finding is **still reported, at its mechanically-derived "
+     "severity**."),
+    ("suppression changes scoring status only",
+     "Suppression changes only its *scoring status* — it stops holding the severity "
+     "floor down."),
+    ("a persistent suppression carries an owner and an expiry",
+     "**Persistence:** `.vigil/ignore`, where **every entry carries an owner and an "
+     "expiry**."),
+]
+
+
+def check_suppression_contract(r: Report) -> None:
+    """L36 — FLAGS.md and scoring.md must agree on what suppressing a finding does.
+
+    Found by a third-model review. `FLAGS.md` said a matching finding is "hidden from output
+    and excluded from scoring"; `engines/scoring.md` said it is "always reported, at its
+    mechanically-derived severity" and that acceptance "never deletes it, downgrades it, or
+    removes it from the cluster listing". FLAGS.md also contradicted *itself* three lines
+    later, promising the same finding appears in the suppression ledger.
+
+    Two auditors following different files produce different reports from identical findings,
+    which is this project's definition of a functional bug in prose.
+
+    The second half is worse. `.vigil/ignore` was specified as bare patterns, one per line,
+    while scoring.md says: "Never accept a suppression that is anonymous or open-ended — that
+    is the audited party grading itself." That file lives *inside the audited repository*, so
+    the syntax as written let a repo silently suppress its own HIGH findings and keep a green
+    gate. An `--ignore` that can hide a finding is the exact shape SECURITY.md names as an
+    in-scope vulnerability: a gate that can be made to pass while findings are unresolved.
+    """
+    check_clauses(r, "L36", ROOT / "FLAGS.md", SUPPRESSION_CLAUSES,
+                  "engines/scoring.md is the authority and says the opposite; two auditors "
+                  "reading different files would produce different reports")
+
+    flags = ROOT / "FLAGS.md"
+    scoring = ROOT / "engines" / "scoring.md"
+    if not flags.exists() or not scoring.exists():
+        return
+    text = flags.read_text(encoding="utf-8")
+    # The literal wording that started it. Keyed on the phrase rather than on a clause, because
+    # this must fail if it ever comes back — including in a different entry.
+    if re.search(r"hidden from output", text, re.I):
+        r.fail("L36", "FLAGS.md says a suppressed finding is hidden from output — "
+                      "engines/scoring.md says it is always reported and only its scoring "
+                      "status changes. A hidden HIGH is an unexplained lifted cap")
+    if not clause_holds(scoring.read_text(encoding="utf-8"),
+                        "Never accept a suppression that is anonymous or open-ended"):
+        r.fail("L36", "engines/scoring.md no longer refuses anonymous or open-ended "
+                      "suppressions — `.vigil/ignore` lives inside the audited repo, so "
+                      "that sentence is what stops the audited party grading itself")
+
+
 def main() -> int:
     if not ROOT.joinpath("SKILL.md").exists():
         print(f"harness error: {ROOT} does not look like the vigil skill", file=sys.stderr)
@@ -1398,6 +1494,7 @@ def main() -> int:
     check_subject_named(r)
     check_gate_parity(r)
     check_push_trigger(r)
+    check_suppression_contract(r)
     return r.emit()
 
 

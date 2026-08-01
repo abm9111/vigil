@@ -15,7 +15,7 @@ repos:
   - repo: local
     hooks:
       - id: vigil-self-audit
-        name: VIGIL self-audit (33 structural checks)
+        name: VIGIL self-audit (36 structural checks)
         entry: python3 evals/check_repo.py
         language: system
         pass_filenames: false

@@ -294,3 +294,57 @@ def test_unknown_is_an_acceptable_tree_state(
     rec["tree_state"] = "unknown"
     p = write_bundle(tmp_path, {"schema_version": 1, "contributor": "dev0", "records": [rec]})
     assert check_bundle(p, bundle_schema, schema) == []
+
+
+# ───────────────────────────────────────────── an array is a field content can occupy
+
+
+def test_an_array_without_items_is_refused() -> None:
+    """The hole a third-model review found, and the reason it mattered.
+
+    `validate()` descended into a list only when the schema declared `items`, so
+    `{"type": "array"}` accepted every element unexamined. Nothing else caught it: the
+    elements are strings, but LEAK_SHAPES looks for paths, hosts and key shapes, and a
+    sentence describing someone's architecture has none of those. The closed-schema claim in
+    CONTRIBUTING.md and SECURITY.md is that content has *no field to occupy* — an array with
+    no `items` is a field to occupy.
+    """
+    schema = {"type": "object", "additionalProperties": False,
+              "properties": {"notes": {"type": "array"}}}
+    errs = validate({"notes": ["auth bypass in the internal refund workflow"]},
+                    schema, schema, "$")
+    assert errs, "an unconstrained array was accepted — content has a field to occupy again"
+    assert "items" in errs[0]
+
+
+def test_the_leak_scanner_would_not_have_caught_it() -> None:
+    """Why the schema has to be the guarantee rather than the scanner.
+
+    Defence in depth is not depth if the second layer looks for a different thing. This string
+    is exactly what a contributor would write and carries no path, host or key shape.
+    """
+    assert scan_leaks(json.dumps({"notes": ["we rely on a legacy service for authorisation "
+                                            "and it is not covered by tests"]})) == []
+
+
+def test_an_array_may_be_exempted_only_by_naming_what_validates_it(
+    tmp_path: Path, bundle_schema: dict[str, Any], schema: dict[str, Any]
+) -> None:
+    """`bundle.records` is legitimately opaque — check_bundle validates each element against
+    the record schema, and a cross-file $ref would make this gate fetch a file to decide. The
+    exemption is sound; it must be *declared*, or "validated elsewhere" and "not validated"
+    are indistinguishable from inside the validator.
+    """
+    assert "x-validated-by" in bundle_schema["properties"]["records"], (
+        "the exemption became implicit again — an undeclared opaque array is the hole"
+    )
+    p = write_bundle(tmp_path, {"schema_version": 1, "contributor": "dev0",
+                                "records": [clean_record()]})
+    assert check_bundle(p, bundle_schema, schema) == []
+
+
+def test_an_undeclared_opaque_array_still_fails() -> None:
+    """Removing the marker must reopen the error, or the marker is decoration."""
+    schema = {"type": "object", "additionalProperties": False,
+              "properties": {"rows": {"type": "array", "minItems": 1}}}
+    assert validate({"rows": ["anything at all"]}, schema, schema, "$")

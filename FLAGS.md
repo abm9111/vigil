@@ -64,9 +64,14 @@ cluster" into the same green as a full pass.
 **Effect:** Suppress findings matching pattern.
 **Values:** Finding IDs (`VIGIL-SEC-001`), glob patterns (`VIGIL-SEC-*`), severity (`--ignore LOW`)
 **Default:** None
-**Behavior:** Matching findings are hidden from output and excluded from scoring.
+**Behavior:** A matching finding is **still reported, at its mechanically-derived severity**.
+Suppression changes only its *scoring status* — it stops holding the severity floor down. It is
+never hidden, never downgraded, and never removed from its cluster listing. `engines/scoring.md`
+is the authority. This entry once described the opposite behaviour, contradicting both that
+file and the Ledger line three rows below it — see `lessons/0014`.
 **Interaction:** Applied after correlation (so ignoring a constituent doesn't break correlated findings).
-**Persistence:** For permanent ignores, add to `.vigil/ignore` file (one pattern per line).
+**Persistence:** `.vigil/ignore`, where **every entry carries an owner and an expiry**. An entry
+with neither is not a suppression — ignore it and keep the cap.
 **Ledger:** every suppressed finding is listed beside the grade with the authority that
 suppressed it, and under `--ci` it must appear in the artifact's `suppressions` array — see
 [engines/scoring.md](engines/scoring.md) and [engines/ci-adapter.md](engines/ci-adapter.md).
@@ -125,17 +130,24 @@ HIGH findings from the printout and still exits 1 — the two senses are unrelat
 
 ## `.vigil/ignore` File
 
-Persistent ignore rules (one per line):
+Persistent suppressions, one per line, each as `pattern | owner | expiry`:
 
 ```
-# Ignore specific findings
-VIGIL-CODE-012
-VIGIL-SEC-003
-
-# Ignore all LOW in a cluster
-VIGIL-PERF-*:LOW
-
-# Ignore file patterns
-file:tests/**
-file:scripts/seed.py
+# pattern            | owner     | expiry (YYYY-MM-DD)
+VIGIL-CODE-012       | platform  | 2026-09-30
+VIGIL-PERF-*:LOW     | perf-wg   | 2026-12-31
+file:scripts/seed.py | data-eng  | 2026-10-15
 ```
+
+**An entry missing an owner or an expiry is not a suppression.** Ignore it, keep the cap, and
+say in the report that it was ignored and why. This file lives inside the audited repository,
+so the audited party authors its own suppressions — that is only workable because every one
+names a person and a date. A bare pattern is anonymous and open-ended, which is the audited
+party grading itself (`engines/scoring.md`, "Suppression changes scoring status, never the
+finding").
+
+**Expired entries revert automatically** and re-apply the cap. An expiry in the past is not a
+suppression either.
+
+Suppressed findings still appear in the report and in the `--ci` artifact's `suppressions`
+array, with the owner and expiry that authorised them.

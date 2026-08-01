@@ -80,6 +80,11 @@ KNOWN = {
     "$schema", "$id", "$ref", "title", "description", "definitions",
     "type", "enum", "const", "properties", "additionalProperties", "required",
     "items", "minItems", "uniqueItems", "minimum", "maximum", "pattern",
+    # Not a JSON Schema keyword. It marks an array whose elements another pass validates —
+    # currently only bundle.records, which check_bundle() checks against the record schema.
+    # It is implemented (it suppresses exactly one error, below) and its value is prose that
+    # names the validating pass, so an unexplained exemption cannot be added silently.
+    "x-validated-by",
 }
 
 TYPES: dict[str, type | tuple[type, ...]] = {
@@ -166,7 +171,22 @@ def validate(node: Any, schema: dict[str, Any], root: dict[str, Any], path: str)
             seen = [json.dumps(x, sort_keys=True) for x in node]
             if len(set(seen)) != len(seen):
                 errs.append(f"{path}: contains duplicate items")
-        if "items" in schema:
+        # Fail closed on an array the schema does not describe. Descending only when `items`
+        # exists meant an array without it was accepted unexamined — every element, whatever
+        # it held. The gate's promise is that content is unrepresentable, so an unvalidated
+        # container is a hole in the promise, not a permissive default.
+        #
+        # `x-validated-by` is the one way out, and it must be spelled: the bundle envelope
+        # deliberately leaves `records` opaque because check_bundle() validates each element
+        # against the *record* schema, and a cross-file $ref would make this gate fetch a
+        # second file to decide. That composition is sound — but it has to be declared, or
+        # "validated somewhere else" and "not validated" look identical from here.
+        if "items" not in schema and "x-validated-by" not in schema:
+            errs.append(f"{path}: array has no `items` in the schema, so its contents are "
+                        f"unvalidated — refusing rather than accepting {len(node)} "
+                        "unexamined element(s). If another pass validates them, say so with "
+                        "`x-validated-by`")
+        elif "items" in schema:
             for i, item in enumerate(node):
                 errs += validate(item, schema["items"], root, f"{path}[{i}]")
 

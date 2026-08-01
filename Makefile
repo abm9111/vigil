@@ -14,7 +14,7 @@
 check: audit loadable ledger privacy test types lint
 	@echo "── all gates green"
 
-## audit: 33 structural self-checks (<1s, no LLM, no network)
+## audit: 36 structural self-checks (<1s, no LLM, no network)
 audit:
 	python3 evals/check_repo.py
 

@@ -187,3 +187,56 @@ def test_every_clause_has_an_inversion_probe() -> None:
         "green while its rule says the opposite. See AGENTS.md, 'Mutating a prose check'."
     )
 
+
+
+# ───────────────────────────────────── the two attacks that beat the fragment form
+
+
+NEGATION_ATTACKS: list[tuple[str, str, str, str]] = [
+    # Insertion. Every word of the rule survives; a clause is spliced into the middle that
+    # reverses it. The fragment `only on demonstrated efficacy` matched the result verbatim.
+    ("L31", "RULES.md",
+     "**A mitigation may reduce a finding's severity only on demonstrated efficacy.**",
+     "**A mitigation may reduce a finding's severity — and this is deliberately not "
+     "restricted to only on demonstrated efficacy; a control that is present and wired up "
+     "is enough.**"),
+    # Historical quotation. The rule is preserved word for word and demoted to a description
+    # of what used to be true. This one flipped consent to OPT-OUT with all eight L28 clauses
+    # green, which is the most damaging single edit anyone could make to this repository.
+    ("L28", "engines/telemetry.md",
+     "**The default is no, and enter must select it.** If the user says nothing, "
+     "nothing is shared.",
+     "**The default is yes.** Earlier versions specified that **The default is no, and enter "
+     "must select it.** If the user says nothing, nothing is shared. That is no longer the "
+     "behaviour."),
+]
+
+
+@pytest.mark.parametrize("check_id,rel,old,new", NEGATION_ATTACKS,
+                         ids=[f"{c}-{r.split('/')[-1]}" for c, r, _, _ in NEGATION_ATTACKS])
+def test_negating_around_an_intact_rule_is_caught(
+    tmp_path: Path, check_id: str, rel: str, old: str, new: str
+) -> None:
+    """A rule can be reversed without deleting a word of it. That must not pass.
+
+    Both edits below left every fragment the old checks searched for exactly where it was, and
+    both were reported clean. They are not adversarial constructions — keeping the old sentence
+    as a historical note is how documentation drifts in every repository.
+
+    A regex cannot prove meaning, and this does not claim to. It claims that the sentence
+    stating a rule must appear *as* that rule: intact, beginning a sentence, and not walked
+    back by the prose around it.
+    """
+    dst = tmp_path / "vigil"
+    shutil.copytree(REPO, dst, ignore=shutil.ignore_patterns(
+        ".git", "__pycache__", ".mypy_cache", ".ruff_cache", ".pytest_cache", "export"))
+    target = dst / rel
+    text = target.read_text(encoding="utf-8")
+    assert old in text, f"anchor drifted in {rel}"
+    target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+    proc = subprocess.run([sys.executable, str(dst / "evals" / "check_repo.py")],
+                          capture_output=True, text=True, check=False)
+    out = proc.stdout + proc.stderr
+    assert proc.returncode != 0, f"the rule was reversed and the audit passed:\n{out}"
+    assert f"[{check_id}]" in out, f"expected {check_id} to object, got:\n{out}"

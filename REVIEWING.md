@@ -4,9 +4,10 @@ You have been invited to review this before it goes public. This page exists so 
 useful in ten minutes instead of an hour, and so you do not spend that hour re-finding things
 that are already known.
 
-**What would help most: find a ninth defect.** Two cross-model reviews found eight between them
-with almost no overlap, and the automated suite found none of the eight. The discovery rate has
-not dropped, so the working assumption is that more exist.
+**What would help most: find a thirteenth defect.** Three cross-model reviews have found ten
+between them with almost no overlap, plus two found by attacking the checks directly. The
+automated suite found **none** of the twelve. The discovery rate has not dropped across three
+rounds, so the working assumption is that more exist.
 
 ## Orient in two minutes
 
@@ -16,7 +17,7 @@ between two Markdown files is a functional bug — two auditors reading the same
 compute different scores.
 
 ```bash
-make check        # 35 structural checks, 164 tests, mypy, ruff — offline, no API key, ~40s
+make check        # 36 structural checks, 164 tests, mypy, ruff — offline, no API key, ~40s
 make help         # every target
 ```
 
@@ -29,14 +30,18 @@ make help         # every target
 
 ## Already reviewed — please do not re-find these
 
-Two sandboxed cross-model reviews ran 2026-08-01. All eight findings are fixed, each with a
-regression test. Full write-up in
-[`evals/results/2026-08-01-cross-model-review.md`](evals/results/2026-08-01-cross-model-review.md).
+Three sandboxed cross-model reviews ran 2026-08-01 (Grok, Kimi, GPT-5.5). All findings are
+fixed, each with a regression test. Write-ups in
+[`evals/results/2026-08-01-cross-model-review.md`](evals/results/2026-08-01-cross-model-review.md)
+and
+[`evals/results/2026-08-01-third-model-review.md`](evals/results/2026-08-01-third-model-review.md).
 
-Summary of what is already closed: two rule-composition holes (Rule 1a vs 3a, Rule 3a vs Rule
-7's floor fence), four leaky prose-check patterns, a gameable check count, three privacy-gate
-holes that failed open, an installer that destroyed uncommitted work, and two direct rule
-contradictions.
+Already closed: two rule-composition holes (Rule 1a vs 3a, Rule 3a vs Rule 7's floor fence),
+four leaky prose-check patterns, a gameable check count, three privacy-gate holes that failed
+open, an installer that destroyed uncommitted work, two direct rule contradictions, an array
+without `items` that reopened the closed-schema guarantee, the `--ignore` / `scoring.md`
+suppression contradiction, and — the big one — **every prose check being satisfiable by
+quoting the rule it guards rather than asserting it** (`lessons/0014`).
 
 ## Known-open — documented, not defects
 

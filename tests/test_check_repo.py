@@ -144,6 +144,11 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     # makes this test fail every time a check is added, which is the opposite of useful.
     ("L24", lambda r: edit(r / "README.md", "## Status",
                            "It runs 999 checks.\n\n## Status")),
+    # A non-Markdown gate surface. Both the Makefile and the pre-commit hook carried a stale
+    # count for two check additions because L24 scanned neither — and these are the two files
+    # a contributor actually invokes.
+    ("L24", lambda r: edit(r / "Makefile", "structural self-checks",
+                           "structural self-checks, of which 999 checks are new,")),
     # The mutation that matters most: one unconstrained string reopens the whole surface,
     # and every other test in this file still passes.
     ("L25", lambda r: edit(r / "schemas" / "run-record.schema.json",
@@ -191,6 +196,18 @@ BREAKERS: list[tuple[str, Callable[[Path], None]]] = [
     # Removing the push trigger entirely leaves direct pushes to main unchecked.
     ("L35", lambda r: edit(r / ".github" / "workflows" / "self-audit.yml",
                            "  push:\n", "  workflow_dispatch:\n")),
+    # Restore the wording that let a suppressed HIGH vanish from the report while
+    # engines/scoring.md said it is always reported.
+    ("L36", lambda r: edit(r / "FLAGS.md",
+                           "**Behavior:** A matching finding is **still reported",
+                           "**Behavior:** Matching findings are hidden from output"
+                           " and excluded from scoring. A matching finding is **still reported")),
+    # Drop the owner/expiry requirement, leaving the audited repo free to author anonymous,
+    # open-ended suppressions of its own findings.
+    ("L36", lambda r: edit(r / "FLAGS.md",
+                           "**Persistence:** `.vigil/ignore`, where **every entry carries an "
+                           "owner and an expiry**.",
+                           "**Persistence:** `.vigil/ignore` (one pattern per line).")),
 ]
 
 
