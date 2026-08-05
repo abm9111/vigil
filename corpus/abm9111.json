@@ -124,6 +124,123 @@
       "cap_reason": "high",
       "transmitted": false,
       "shared": "asked-accepted"
+    },
+    {
+      "schema_version": 1,
+      "vigil_version": "unversioned",
+      "mode": "audit",
+      "timestamp_bucket": "2026-Q3",
+      "stack": [
+        "python",
+        "sqlite",
+        "other"
+      ],
+      "tree_state": "unknown",
+      "repo_size_bucket": "tiny",
+      "duration_bucket": "1-5min",
+      "tools": {
+        "available": [
+          "bandit",
+          "ruff",
+          "trufflehog"
+        ],
+        "missing": []
+      },
+      "clusters": [
+        {
+          "prefix": "SEC",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "DATA",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 2,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "CODE",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 1,
+          "info": 0
+        },
+        {
+          "prefix": "COMP",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "AIML",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 1
+        },
+        {
+          "prefix": "EGRESS",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 1,
+          "info": 0
+        },
+        {
+          "prefix": "API",
+          "verdict": "na",
+          "na_trigger": "explicitly-out-of-scope"
+        },
+        {
+          "prefix": "FE",
+          "verdict": "na",
+          "na_trigger": "no-matching-files"
+        },
+        {
+          "prefix": "INFRA",
+          "verdict": "na",
+          "na_trigger": "no-matching-manifest"
+        },
+        {
+          "prefix": "PERF",
+          "verdict": "na",
+          "na_trigger": "explicitly-out-of-scope"
+        },
+        {
+          "prefix": "CHAIN",
+          "verdict": "na",
+          "na_trigger": "no-contract-files"
+        }
+      ],
+      "correlations": [],
+      "false_positives_withdrawn": 0,
+      "verdict": "fail",
+      "partial_score": 89,
+      "capped_to": 89,
+      "cap_reason": "medium",
+      "transmitted": false,
+      "shared": "asked-accepted"
     }
   ]
 }
