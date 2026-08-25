@@ -484,6 +484,144 @@
       "cap_reason": "high",
       "transmitted": false,
       "shared": "asked-accepted"
+    },
+    {
+      "schema_version": 1,
+      "vigil_version": "unversioned",
+      "mode": "audit",
+      "timestamp_bucket": "2026-Q3",
+      "stack": [
+        "node",
+        "typescript",
+        "react",
+        "docker",
+        "github-actions"
+      ],
+      "tree_state": "clean",
+      "repo_size_bucket": "small",
+      "duration_bucket": "10-30min",
+      "tools": {
+        "available": [
+          "git",
+          "tsc",
+          "gitleaks",
+          "trufflehog",
+          "detect-secrets",
+          "semgrep",
+          "hadolint",
+          "trivy",
+          "npm-audit"
+        ],
+        "missing": [
+          "eslint"
+        ]
+      },
+      "clusters": [
+        {
+          "prefix": "SEC",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "CODE",
+          "verdict": "scored",
+          "ceiling": 85,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "API",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "DATA",
+          "verdict": "na",
+          "na_trigger": "no-matching-files"
+        },
+        {
+          "prefix": "INFRA",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 2,
+          "info": 0
+        },
+        {
+          "prefix": "FE",
+          "verdict": "scored",
+          "ceiling": 85,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "PERF",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "COMP",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "EGRESS",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "AIML",
+          "verdict": "na",
+          "na_trigger": "stack-absent"
+        },
+        {
+          "prefix": "CHAIN",
+          "verdict": "na",
+          "na_trigger": "no-contract-files"
+        }
+      ],
+      "correlations": [],
+      "false_positives_withdrawn": 0,
+      "verdict": "incomplete",
+      "partial_score": 85,
+      "capped_to": 85,
+      "cap_reason": "none",
+      "transmitted": false,
+      "shared": "asked-accepted",
+      "outcomes": []
     }
   ]
 }
