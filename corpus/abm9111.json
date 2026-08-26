@@ -622,6 +622,184 @@
       "transmitted": false,
       "shared": "asked-accepted",
       "outcomes": []
+    },
+    {
+      "schema_version": 1,
+      "vigil_version": "unversioned",
+      "mode": "audit",
+      "timestamp_bucket": "2026-Q3",
+      "stack": [
+        "python",
+        "node",
+        "typescript",
+        "docker",
+        "sql",
+        "fastapi",
+        "react",
+        "next",
+        "sqlite",
+        "github-actions"
+      ],
+      "tree_state": "dirty",
+      "repo_size_bucket": "small",
+      "duration_bucket": "10-30min",
+      "tools": {
+        "available": [
+          "git",
+          "bandit",
+          "gitleaks",
+          "trufflehog",
+          "detect-secrets",
+          "pip-audit",
+          "ruff",
+          "mypy",
+          "tsc",
+          "hadolint",
+          "npm-audit"
+        ],
+        "missing": [
+          "eslint",
+          "semgrep",
+          "trivy"
+        ]
+      },
+      "clusters": [
+        {
+          "prefix": "SEC",
+          "verdict": "scored",
+          "ceiling": 85,
+          "critical": 2,
+          "high": 1,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "CODE",
+          "verdict": "scored",
+          "ceiling": 85,
+          "critical": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 2,
+          "info": 0
+        },
+        {
+          "prefix": "API",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 3,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "DATA",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "INFRA",
+          "verdict": "scored",
+          "ceiling": 85,
+          "critical": 0,
+          "high": 2,
+          "medium": 2,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "FE",
+          "verdict": "scored",
+          "ceiling": 85,
+          "critical": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "PERF",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "COMP",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 2,
+          "medium": 2,
+          "low": 1,
+          "info": 0
+        },
+        {
+          "prefix": "AIML",
+          "verdict": "na",
+          "na_trigger": "stack-absent",
+          "ceiling": null
+        },
+        {
+          "prefix": "EGRESS",
+          "verdict": "scored",
+          "ceiling": 100,
+          "critical": 0,
+          "high": 0,
+          "medium": 1,
+          "low": 0,
+          "info": 0
+        },
+        {
+          "prefix": "CHAIN",
+          "verdict": "na",
+          "na_trigger": "no-matching-files",
+          "ceiling": null
+        }
+      ],
+      "correlations": [
+        {
+          "pattern": "AUTH_BYPASS_WITH_SCOPE",
+          "severity": "critical",
+          "primary": "SEC",
+          "constituents": 8
+        },
+        {
+          "pattern": "DEPENDENCY_AND_REACHABILITY",
+          "severity": "critical",
+          "primary": "SEC",
+          "constituents": 5
+        },
+        {
+          "pattern": "INTEGRITY_THEATER",
+          "severity": "high",
+          "primary": "SEC",
+          "constituents": 1
+        },
+        {
+          "pattern": "OBSERVABILITY_BLINDSPOT",
+          "severity": "high",
+          "primary": "COMP",
+          "constituents": 2
+        }
+      ],
+      "false_positives_withdrawn": 6,
+      "verdict": "incomplete",
+      "partial_score": 76,
+      "capped_to": 59,
+      "cap_reason": "critical",
+      "transmitted": false,
+      "shared": "asked-accepted"
     }
   ]
 }
